@@ -72,26 +72,7 @@ Isi `NEXTAUTH_SECRET` dengan nilai yang dihasilkan.
 
 ---
 
-## 4. 🔷 FACEBOOK_CLIENT_ID & FACEBOOK_CLIENT_SECRET
-
-**Layanan:** [Meta for Developers](https://developers.facebook.com)
-
-**Langkah Setup:**
-1. Buka [developers.facebook.com](https://developers.facebook.com) dan masuk dengan akun Facebook
-2. Klik **My Apps → Create App**
-3. Pilih tipe: **Consumer** → klik Next
-4. Beri nama app: `SMI App` → klik Create App
-5. Di dashboard app, cari produk **Facebook Login** → klik **Set Up**
-6. Pilih platform: **Web** → masukkan URL: `http://localhost:3000`
-7. Pergi ke **Facebook Login → Settings**:
-   - Valid OAuth Redirect URIs: `http://localhost:3000/api/auth/callback/facebook`
-8. Pergi ke **Settings → Basic**:
-   - Salin **App ID** → isikan ke `FACEBOOK_CLIENT_ID`
-   - Salin **App Secret** (klik Show) → isikan ke `FACEBOOK_CLIENT_SECRET`
-
----
-
-## 5. 🖼️ CLOUDINARY (Penyimpanan Gambar & Media)
+## 4. 🖼️ CLOUDINARY (Penyimpanan Gambar & Media)
 
 **Layanan:** [Cloudinary](https://cloudinary.com) — Gratis 25GB storage & 25GB bandwidth/bulan
 

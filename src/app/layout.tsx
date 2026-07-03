@@ -51,10 +51,11 @@ export default function RootLayout({
       className={`${plusJakartaSans.variable} ${workSans.variable}`}
     >
       <head>
-        {/* Material Symbols Outlined — icon library */}
+        {/* Material Symbols Outlined — loaded via CDN, display=optional to satisfy font-display lint rule */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=optional"
         />
       </head>
       <body className="bg-background text-on-background font-sans antialiased">
