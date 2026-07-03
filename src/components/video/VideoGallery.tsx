@@ -2,17 +2,7 @@
 
 import { useState } from "react";
 
-interface Video {
-  id: string;
-  title: string;
-  description: string | null;
-  category: "TUTORIAL" | "GALLERY" | "FUN_FACT";
-  videoUrl: string;
-  thumbnail: string | null;
-  duration: string;
-  author: string;
-  viewsCount: number;
-}
+import { Video } from "@prisma/client";
 
 export function VideoGallery({ initialVideos }: { initialVideos: Video[] }) {
   const [selectedTab, setSelectedTab] = useState<"ALL" | "TUTORIAL" | "GALLERY" | "FUN_FACT">("ALL");

@@ -24,7 +24,7 @@ export function Navbar() {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo & Brand */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-9 h-9 rounded-full overflow-hidden border border-primary/20 bg-surface-container flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm inner-glow">
+          <div className="relative w-9 h-9 border border-primary/20 bg-surface-container flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm inner-glow">
             <Image
               src="/logo_smi.png"
               alt="Logo Sahabat Misdinar Indonesia"
@@ -34,7 +34,7 @@ export function Navbar() {
               className="object-cover"
             />
           </div>
-          <span className="font-display-lg text-lg text-primary tracking-tight font-black transition-colors group-hover:text-primary-container">
+          <span className="font-headline-md text-primary tracking-tight font-black transition-colors group-hover:text-primary-container">
             SMI
           </span>
         </Link>

@@ -4,9 +4,10 @@ import { VideoGallery } from "@/components/video/VideoGallery";
 export const revalidate = 60; // Cache cache selama 60 detik
 
 export default async function VideoPage() {
-  // Ambil data video dari database Supabase
+  // Ambil data video dari database
   const videos = await prisma.video.findMany({
     orderBy: { createdAt: "desc" },
+    take: 100,
   });
 
   return (
@@ -24,7 +25,7 @@ export default async function VideoPage() {
         </div>
 
         {/* Dynamic Video Tabs & Bento Layout */}
-        <VideoGallery initialVideos={videos as any} />
+        <VideoGallery initialVideos={videos} />
       </div>
     </main>
   );

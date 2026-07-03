@@ -52,13 +52,6 @@ export default function RootLayout({
       lang="id"
       className={`${plusJakartaSans.variable} ${workSans.variable}`}
     >
-      <head>
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=optional"
-        />
-      </head>
       <body className="bg-background text-on-background font-sans antialiased min-h-screen flex flex-col">
         <Providers>
           <Navbar />

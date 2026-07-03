@@ -4,9 +4,10 @@ import { EventScheduler } from "@/components/event/EventScheduler";
 export const revalidate = 60; // Cache selama 60 detik
 
 export default async function EventPage() {
-  // Ambil semua jadwal kegiatan dari database Supabase
+  // Ambil jadwal kegiatan terdekat dari database
   const events = await prisma.event.findMany({
     orderBy: { date: "asc" },
+    take: 100,
   });
 
   return (
@@ -28,7 +29,7 @@ export default async function EventPage() {
 
       {/* Scheduler Interactive area */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        <EventScheduler initialEvents={events as any} />
+        <EventScheduler initialEvents={events} />
       </section>
     </main>
   );

@@ -5,16 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-interface Event {
-  id: string;
-  title: string;
-  description: string | null;
-  category: "TUGAS" | "LATIHAN" | "ACARA";
-  date: Date | string;
-  time: string;
-  location: string;
-  status: "COMPLETED" | "UPCOMING";
-}
+import { Event } from "@prisma/client";
 
 const subscribeFormSchema = z.object({
   contact: z.string().refine((val) => {
@@ -147,7 +138,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
       </div>
 
       {/* Newsletter Subscription CTA Section */}
-      <div className="max-w-xl mx-auto p-8 rounded-3xl bg-surface-container-low border border-outline-variant card-glow space-y-6">
+      <div className="max-w-xl mx-auto p-8 rounded-2xl bg-surface-container-low border border-outline-variant card-glow space-y-6">
         <div className="text-center space-y-2">
           <span className="material-symbols-outlined text-3xl text-primary">notifications_active</span>
           <h3 className="font-headline-md text-on-surface">Dapatkan Jadwal Langsung</h3>

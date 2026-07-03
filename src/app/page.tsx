@@ -29,7 +29,7 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-900/80 to-transparent" />
         <div className="relative max-w-6xl mx-auto px-4 w-full flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="max-w-xl space-y-6 text-left">
-            <h1 className="font-display-lg text-white text-4xl md:text-5xl leading-tight">
+            <h1 className="font-headline-lg md:font-display-lg text-white">
               Melayani dengan Kasih, <br />
               <span className="text-secondary-container">Tumbuh Bersama Liturgi</span>
             </h1>
@@ -93,7 +93,7 @@ export default async function HomePage() {
                         {evt.title}
                       </h3>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-mono mt-4">
+                    <div className="flex items-center gap-1.5 font-label-sm text-on-surface-variant mt-4">
                       <span className="material-symbols-outlined text-sm">schedule</span>
                       <span>{evt.time}</span>
                     </div>
