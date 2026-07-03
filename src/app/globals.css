@@ -1,26 +1,131 @@
 @import "tailwindcss";
 
+@theme {
+  --color-primary: #941a00;
+  --color-primary-container: #c02400;
+  --color-secondary: #835400;
+  --color-secondary-container: #fdb242;
+  --color-tertiary: #7e3426;
+
+  --color-background: #fdf9f3;
+  --color-surface: #fdf9f3;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f7f3ed;
+  --color-surface-container: #f1ede7;
+  --color-surface-container-high: #ebe8e2;
+  --color-surface-container-highest: #e6e2dc;
+
+  --color-on-background: #1c1c18;
+  --color-on-surface: #1c1c18;
+  --color-on-surface-variant: #5c403a;
+
+  --color-outline: #907068;
+  --color-outline-variant: #e5beb5;
+
+  --color-error-container: #ffdad6;
+  --color-error: #ba1a1a;
+
+  --font-sans: var(--font-plus-jakarta-sans), sans-serif;
+  --font-mono: var(--font-work-sans), monospace;
+}
+
+/* Base style resets */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  background-color: #fdf9f3;
+  color: #1c1c18;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #fdf9f3;
+  color: #1c1c18;
+}
+
+/* ============================================
+   TYPOGRAPHY SCALE (Sacred Community)
+   ============================================ */
+.font-display-lg {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 56px;
+  letter-spacing: -0.02em;
+}
+
+.font-headline-lg {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 40px;
+}
+
+.font-headline-md {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+}
+
+.font-body-lg {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 28px;
+}
+
+.font-body-md {
+  font-family: var(--font-plus-jakarta-sans), sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.font-label-lg {
+  font-family: var(--font-work-sans), monospace;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.font-label-sm {
+  font-family: var(--font-work-sans), monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+/* ============================================
+   CUSTOM UTILITY CLASSES
+   ============================================ */
+
+/* Efek kedalaman bayangan taktil */
+.inner-glow {
+  box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.4);
+}
+
+/* Efek bayangan ambient hangat */
+.card-glow {
+  box-shadow: 0px 4px 20px rgba(148, 26, 0, 0.08);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.card-glow:hover {
+  box-shadow: 0px 8px 30px rgba(148, 26, 0, 0.15);
+}
+
+/* Tekstur kartu keanggotaan */
+.membership-card-texture {
+  background-image: linear-gradient(135deg, rgba(253, 178, 66, 0.9) 0%, rgba(253, 178, 66, 0.7) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.membership-card-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+  opacity: 0.1;
+  pointer-events: none;
 }
