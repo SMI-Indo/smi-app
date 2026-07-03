@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AnnouncementMarquee } from "@/components/home/AnnouncementMarquee";
+import { Event } from "@prisma/client";
 
 export const revalidate = 60; // Cache for 60 seconds
 
@@ -74,7 +75,7 @@ export default async function HomePage() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {upcomingEvents.length > 0 ? (
-                upcomingEvents.map((evt) => (
+                upcomingEvents.map((evt: Event) => (
                   <div 
                     key={evt.id} 
                     className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant card-glow flex flex-col justify-between h-48"
