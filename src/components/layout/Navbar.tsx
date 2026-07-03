@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import Image from "next/image";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -22,11 +23,18 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo & Brand */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold inner-glow transition-transform group-hover:scale-105">
-            S
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <div className="relative w-9 h-9 rounded-full overflow-hidden border border-primary/20 bg-surface-container flex items-center justify-center transition-transform group-hover:scale-105 shadow-sm inner-glow">
+            <Image
+              src="/logo_smi.png"
+              alt="Logo Sahabat Misdinar Indonesia"
+              fill
+              sizes="36px"
+              priority
+              className="object-cover"
+            />
           </div>
-          <span className="font-display-lg text-lg text-primary tracking-normal font-bold">
+          <span className="font-display-lg text-lg text-primary tracking-tight font-black transition-colors group-hover:text-primary-container">
             SMI
           </span>
         </Link>

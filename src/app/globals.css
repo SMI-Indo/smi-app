@@ -1,4 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import "tailwindcss";
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --font-plus-jakarta-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-work-sans: 'Work Sans', monospace;
+  background-color: #fdf9f3;
+  color: #1c1c18;
+}
 
 @theme {
   --color-primary: #941a00;
@@ -30,20 +54,15 @@
 }
 
 /* Base style resets */
-:root {
-  background-color: #fdf9f3;
-  color: #1c1c18;
-}
-
 body {
   background-color: #fdf9f3;
   color: #1c1c18;
 }
 
 /* ============================================
-   TYPOGRAPHY SCALE (Sacred Community)
+   TYPOGRAPHY SCALE (Tailwind v4 Utilities)
    ============================================ */
-.font-display-lg {
+@utility font-display-lg {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   font-size: 48px;
   font-weight: 800;
@@ -51,35 +70,35 @@ body {
   letter-spacing: -0.02em;
 }
 
-.font-headline-lg {
+@utility font-headline-lg {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   font-size: 32px;
   font-weight: 700;
   line-height: 40px;
 }
 
-.font-headline-md {
+@utility font-headline-md {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   font-size: 24px;
   font-weight: 700;
   line-height: 32px;
 }
 
-.font-body-lg {
+@utility font-body-lg {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   font-size: 18px;
   font-weight: 500;
   line-height: 28px;
 }
 
-.font-body-md {
+@utility font-body-md {
   font-family: var(--font-plus-jakarta-sans), sans-serif;
   font-size: 16px;
   font-weight: 400;
   line-height: 24px;
 }
 
-.font-label-lg {
+@utility font-label-lg {
   font-family: var(--font-work-sans), monospace;
   font-size: 14px;
   font-weight: 600;
@@ -88,7 +107,7 @@ body {
   text-transform: uppercase;
 }
 
-.font-label-sm {
+@utility font-label-sm {
   font-family: var(--font-work-sans), monospace;
   font-size: 12px;
   font-weight: 500;
@@ -100,32 +119,30 @@ body {
    ============================================ */
 
 /* Efek kedalaman bayangan taktil */
-.inner-glow {
+@utility inner-glow {
   box-shadow: inset 1px 1px 0px rgba(255, 255, 255, 0.4);
 }
 
 /* Efek bayangan ambient hangat */
-.card-glow {
+@utility card-glow {
   box-shadow: 0px 4px 20px rgba(148, 26, 0, 0.08);
   transition: box-shadow 0.2s ease-in-out;
-}
-
-.card-glow:hover {
-  box-shadow: 0px 8px 30px rgba(148, 26, 0, 0.15);
+  &:hover {
+    box-shadow: 0px 8px 30px rgba(148, 26, 0, 0.15);
+  }
 }
 
 /* Tekstur kartu keanggotaan */
-.membership-card-texture {
+@utility membership-card-texture {
   background-image: linear-gradient(135deg, rgba(253, 178, 66, 0.9) 0%, rgba(253, 178, 66, 0.7) 100%);
   position: relative;
   overflow: hidden;
-}
-
-.membership-card-texture::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
-  opacity: 0.1;
-  pointer-events: none;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+    opacity: 0.1;
+    pointer-events: none;
+  }
 }
