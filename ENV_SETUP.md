@@ -57,7 +57,7 @@ Isi `NEXTAUTH_SECRET` dengan nilai yang dihasilkan.
 
 **Langkah Setup:**
 1. Buka [console.cloud.google.com](https://console.cloud.google.com)
-2. Buat project baru atau pilih project yang sudah ada
+2. Buat project b aru atau pilih project yang sudah ada
 3. Pergi ke **APIs & Services → OAuth consent screen**
    - User type: **External**
    - Isi nama aplikasi: `Sahabat Misdinar Indonesia`
