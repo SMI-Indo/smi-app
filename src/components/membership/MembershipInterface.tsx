@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import Image from "next/image";
 
 interface UserProfile {
   name: string;
@@ -70,8 +71,15 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
                   Sahabat Misdinar Indonesia
                 </p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-black">
-                S
+              <div className="relative w-8 h-8 rounded-full overflow-hidden border border-primary/20 bg-surface-container flex items-center justify-center transition-transform hover:scale-105 shadow-sm inner-glow">
+                <Image
+                  src="/logo_smi.png"
+                  alt="Logo Sahabat Misdinar Indonesia"
+                  fill
+                  sizes="32px"
+                  priority
+                  className="object-cover"
+                />
               </div>
             </div>
 

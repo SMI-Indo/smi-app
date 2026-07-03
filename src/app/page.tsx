@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AnnouncementMarquee } from "@/components/home/AnnouncementMarquee";
 import { Event as PrismaEvent } from "@prisma/client";
+import Image from "next/image";
 
 export const revalidate = 60; // Cache for 60 seconds
 
@@ -47,8 +48,15 @@ export default async function HomePage() {
           </div>
           {/* Circular Logo on Right (hidden on mobile) */}
           <div className="hidden md:flex w-64 h-64 rounded-full bg-secondary-container/10 border-4 border-secondary-container/45 items-center justify-center backdrop-blur-sm inner-glow animate-pulse">
-            <div className="w-48 h-48 rounded-full bg-primary flex items-center justify-center text-white text-5xl font-display-lg border-2 border-outline-variant">
-              SMI
+            <div className="relative w-48 h-48 rounded-full overflow-hidden border-2 border-outline-variant">
+              <Image
+                src="/logo_smi.png"
+                alt="Logo Sahabat Misdinar Indonesia"
+                fill
+                sizes="192px"
+                priority
+                className="object-cover"
+              />
             </div>
           </div>
         </div>

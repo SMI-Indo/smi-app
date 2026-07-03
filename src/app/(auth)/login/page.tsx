@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Format email tidak valid" }),
@@ -64,8 +65,15 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-surface-container-lowest p-8 rounded-[2rem] card-glow border border-outline-variant space-y-6">
         {/* Form Header */}
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary">
-            <span className="material-symbols-outlined text-4xl">account_circle</span>
+          <div className="relative w-16 h-16 rounded-full overflow-hidden border border-primary/20 bg-surface-container flex items-center justify-center mx-auto transition-transform hover:scale-105 shadow-sm inner-glow">
+            <Image
+              src="/logo_smi.png"
+              alt="Logo Sahabat Misdinar Indonesia"
+              fill
+              sizes="64px"
+              priority
+              className="object-cover"
+            />
           </div>
           <h2 className="font-headline-md text-primary">Masuk Akun</h2>
           <p className="font-body-md text-on-surface-variant">Sahabat Misdinar Indonesia</p>
