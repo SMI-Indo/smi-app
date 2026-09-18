@@ -21,11 +21,26 @@ interface Reward {
   isAvailable: boolean;
 }
 
+interface TransactionItem {
+  id: string;
+  amount: number;
+  type: "CLAIM_TASK" | "REDEEM_REWARD";
+  description: string;
+  createdAt: string;
+}
+
 interface CoinInterfaceProps {
   initialBalance: number;
-  initialHistory: any[];
+  initialHistory: TransactionItem[];
   tasks: Task[];
   rewards: Reward[];
+}
+
+function createUniqueId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "tx-" + String(Date.now());
 }
 
 export function CoinInterface({
@@ -62,7 +77,7 @@ export function CoinInterface({
         setClaimStatus("Klaim berhasil! Koin bertambah.");
         const task = tasks.find((t) => t.id === taskId);
         addTransaction({
-          id: Math.random().toString(),
+          id: createUniqueId(),
           amount: task?.rewardCoins || 0,
           type: "CLAIM_TASK",
           description: `Klaim Misi: ${task?.title}`,
@@ -92,7 +107,7 @@ export function CoinInterface({
       if (res.ok) {
         setClaimStatus(`Klaim ${selectedReward.title} berhasil diproses!`);
         addTransaction({
-          id: Math.random().toString(),
+          id: createUniqueId(),
           amount: selectedReward.coinCost,
           type: "REDEEM_REWARD",
           description: `Penukaran Koin: ${selectedReward.title}`,

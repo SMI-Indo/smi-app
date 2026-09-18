@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ balance: user.coins, history }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

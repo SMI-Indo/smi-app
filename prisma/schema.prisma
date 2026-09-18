@@ -13,8 +13,9 @@ enum Role {
 }
 
 enum EventCategory {
-  TUGAS
-  LATIHAN
+  WEBINAR
+  TEMU_ONLINE
+  WORKSHOP
   ACARA
 }
 
@@ -43,9 +44,11 @@ model User {
   password        String?
   image           String?
   role            Role              @default(MEMBER)
-  parish          String?           // Paroki / Wilayah
-  rank            String?           // Pangkat Misdinar (e.g. Mula, Madya, Utama)
-  memberId        String?           @unique // e.g. SMI-2026-0001
+  isApproved      Boolean           @default(false) // Status ACC dari Pengurus/Admin SMI
+  violationPoints Int               @default(0)     // Akumulasi poin pelanggaran
+  parish          String?           // Asal Paroki / Keuskupan
+  rank            String?           // Pangkat Misdinar (e.g. Mula, Madya, Utama, Pembina)
+  memberId        String?           @unique         // ID Unik diinput manual oleh Admin (e.g. SMI-ONLINE-001)
   coins           Int               @default(0)
   attendanceCount Int               @default(0)
   cardValidUntil  DateTime?
@@ -55,6 +58,20 @@ model User {
   accounts        Account[]
   sessions        Session[]
   transactions    UserTransaction[]
+  violations      ViolationRecord[]
+  quizAttempts    UserQuizAttempt[]
+}
+
+model ViolationRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  points      Int      // Jumlah poin pelanggaran (+5, +10, dsb.)
+  reason      String   // Alasan pelanggaran (misal: "Absen pertemuan online tanpa keterangan")
+  date        DateTime @default(now())
+  createdById String?  // ID pengurus/admin pencatat
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -96,10 +113,10 @@ model Event {
   id          String        @id @default(cuid())
   title       String
   description String?
-  category    EventCategory @default(TUGAS)
+  category    EventCategory @default(TEMU_ONLINE)
   date        DateTime
-  time        String        // e.g. "08:00 - 10:00 WIB"
-  location    String
+  time        String        // e.g. "19:00 - 21:00 WIB (Zoom)"
+  location    String        // e.g. "Zoom Meeting / Google Meet SMI"
   status      EventStatus   @default(UPCOMING)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -125,8 +142,43 @@ model MissionTask {
   title       String
   description String?
   rewardCoins Int      @default(5)
-  category    String   @default("Event Bulanan")
+  category    String   @default("Kegiatan Online")
   createdAt   DateTime @default(now())
+}
+
+model Quiz {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  rewardCoins Int               @default(10)
+  createdAt   DateTime          @default(now())
+
+  questions   QuizQuestion[]
+  attempts    UserQuizAttempt[]
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  quizId      String
+  question    String
+  options     String[]
+  correctIdx  Int
+  explanation String?
+
+  quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model UserQuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  quizId    String
+  score     Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId])
 }
 
 model UserTransaction {

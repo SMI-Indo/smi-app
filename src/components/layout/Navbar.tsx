@@ -15,6 +15,7 @@ export function Navbar() {
     { href: "/", label: "Beranda", icon: "home" },
     { href: "/event", label: "Jadwal", icon: "calendar_month" },
     { href: "/video", label: "Video", icon: "play_circle" },
+    { href: "/quiz", label: "Kuis", icon: "quiz", protected: true },
     { href: "/coin", label: "Koin", icon: "token", protected: true },
     { href: "/membership", label: "Digital ID", icon: "badge", protected: true },
   ];
@@ -100,6 +101,16 @@ export function Navbar() {
                       {session.user?.email}
                     </p>
                   </div>
+                  {session.user?.role === "ADMIN" && (
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-primary font-bold hover:bg-surface-container transition-colors border-b border-outline-variant/40"
+                    >
+                      <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                      <span>Portal Pengurus</span>
+                    </Link>
+                  )}
                   <Link
                     href="/membership"
                     onClick={() => setIsOpen(false)}
@@ -143,10 +154,35 @@ export function Navbar() {
       </div>
 
       {/* Mobile Drawer (visible on mobile only) */}
-      {isOpen && !session && (
+      {isOpen && (
         <div className="md:hidden bg-surface-container-lowest border-b border-outline-variant py-4 px-4 space-y-2 animate-in slide-in-from-top duration-200">
+          {session && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container border border-outline-variant mb-2">
+              {session.user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={session.user.image}
+                  alt={session.user.name || "Avatar"}
+                  className="w-10 h-10 rounded-full border border-primary/20 object-cover"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-secondary-container text-secondary flex items-center justify-center font-bold">
+                  {session.user?.name ? session.user.name[0].toUpperCase() : "U"}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="font-body-md font-bold text-on-surface truncate text-sm">
+                  {session.user?.name}
+                </p>
+                <p className="text-xs text-on-surface-variant truncate">
+                  {session.user?.email}
+                </p>
+              </div>
+            </div>
+          )}
+
           {navLinks
-            .filter((link) => !link.protected)
+            .filter((link) => !link.protected || !!session)
             .map((link) => (
               <Link
                 key={link.href}
@@ -154,7 +190,7 @@ export function Navbar() {
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl font-body-md ${
                   pathname === link.href
-                    ? "bg-primary/10 text-primary font-bold"
+                    ? "bg-primary text-white font-bold"
                     : "text-on-surface-variant hover:bg-surface-container"
                 }`}
               >
@@ -162,6 +198,30 @@ export function Navbar() {
                 <span>{link.label}</span>
               </Link>
             ))}
+
+          {session?.user?.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl font-body-md bg-primary/10 text-primary font-bold border border-primary/20"
+            >
+              <span className="material-symbols-outlined">admin_panel_settings</span>
+              <span>Portal Pengurus SMI</span>
+            </Link>
+          )}
+
+          {session && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                signOut({ callbackUrl: "/" });
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-body-md text-error hover:bg-error-container/20 transition-colors"
+            >
+              <span className="material-symbols-outlined">logout</span>
+              <span>Keluar</span>
+            </button>
+          )}
         </div>
       )}
     </header>

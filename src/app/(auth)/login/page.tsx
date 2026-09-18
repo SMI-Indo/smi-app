@@ -22,6 +22,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [approvalNotice, setApprovalNotice] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const errorParam = params.get("error");
+      return errorParam === "PendingApproval" || errorParam === "AccessDenied";
+    }
+    return false;
+  });
 
   const {
     register,
@@ -34,6 +42,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     setAuthError(null);
+    setApprovalNotice(false);
 
     try {
       const res = await signIn("credentials", {
@@ -43,12 +52,16 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setAuthError("Email atau kata sandi salah. Silakan coba lagi.");
+        if (res.error.includes("belum disetujui") || res.error.includes("di-ACC")) {
+          setApprovalNotice(true);
+        } else {
+          setAuthError("Email atau kata sandi salah. Silakan coba lagi.");
+        }
       } else {
         router.push("/membership");
         router.refresh();
       }
-    } catch (err) {
+    } catch {
       setAuthError("Terjadi kesalahan sistem. Silakan coba lagi.");
     } finally {
       setIsLoading(false);
@@ -78,6 +91,19 @@ export default function LoginPage() {
           <h2 className="font-headline-md text-primary">Masuk Akun</h2>
           <p className="font-body-md text-on-surface-variant">Sahabat Misdinar Indonesia</p>
         </div>
+
+        {approvalNotice && (
+          <div className="p-4 text-xs md:text-sm rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 font-body-md space-y-1.5 text-center shadow-sm">
+            <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold">
+              <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+              <span>Menunggu ACC Pengurus SMI</span>
+            </div>
+            <p className="leading-relaxed">
+              Akun Anda terdaftar namun <strong>belum disetujui (di-ACC)</strong> oleh Admin.
+              Hanya akun yang telah di-ACC yang dapat mengakses fitur SMI. Hubungi pengurus untuk verifikasi dan aktivasi.
+            </p>
+          </div>
+        )}
 
         {authError && (
           <div className="p-3 text-sm rounded-xl bg-error-container text-error font-body-md text-center border border-error/20">

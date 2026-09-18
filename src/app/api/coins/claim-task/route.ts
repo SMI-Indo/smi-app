@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import * as z from "zod";
+
+const claimSchema = z.object({
+  taskId: z.string().min(1, "Task ID wajib disertakan"),
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,11 +16,15 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { taskId } = body;
-
-    if (!taskId) {
-      return NextResponse.json({ error: "Task ID wajib disertakan" }, { status: 400 });
+    const parsed = claimSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Task ID tidak valid" },
+        { status: 400 }
+      );
     }
+
+    const { taskId } = parsed.data;
 
     const task = await prisma.missionTask.findUnique({
       where: { id: taskId },
@@ -27,31 +36,51 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: { id: true, coins: true },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    const newBalance = user.coins + task.rewardCoins;
-
-    // Credit coins & log transaction
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { coins: newBalance },
-    });
-
-    await prisma.userTransaction.create({
-      data: {
+    // Cek apakah misi ini sudah pernah diklaim oleh user (Anti-Replay / Infinite Claim exploit fix)
+    const existingClaim = await prisma.userTransaction.findFirst({
+      where: {
         userId: user.id,
-        amount: task.rewardCoins,
         type: "CLAIM_TASK",
-        description: `Klaim Misi: ${task.title}`,
+        description: { contains: task.title },
       },
     });
 
+    if (existingClaim) {
+      return NextResponse.json(
+        { error: "Misi ini sudah pernah Anda klaim sebelumnya." },
+        { status: 400 }
+      );
+    }
+
+    // Atomic transaction for coin credit & audit transaction log
+    const newBalance = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: { coins: { increment: task.rewardCoins } },
+        select: { coins: true },
+      });
+
+      await tx.userTransaction.create({
+        data: {
+          userId: user.id,
+          amount: task.rewardCoins,
+          type: "CLAIM_TASK",
+          description: `Klaim Misi: ${task.title}`,
+        },
+      });
+
+      return updatedUser.coins;
+    });
+
     return NextResponse.json({ success: true, newBalance }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

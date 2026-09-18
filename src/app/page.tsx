@@ -7,17 +7,28 @@ import Image from "next/image";
 export const revalidate = 60; // Cache for 60 seconds
 
 export default async function HomePage() {
-  // Fetch next 2 upcoming events
-  const upcomingEvents = await prisma.event.findMany({
-    where: { status: "UPCOMING" },
-    orderBy: { date: "asc" },
-    take: 2,
-  });
+  let upcomingEvents: PrismaEvent[] = [];
+  let featuredVideo = null;
 
-  // Fetch featured video
-  const featuredVideo = await prisma.video.findFirst({
-    where: { isFeatured: true },
-  });
+  try {
+    // Fetch next 2 upcoming events
+    upcomingEvents = await prisma.event.findMany({
+      where: {
+        status: "UPCOMING",
+        category: { in: ["WEBINAR", "TEMU_ONLINE", "WORKSHOP", "ACARA"] },
+      },
+      orderBy: { date: "asc" },
+      take: 2,
+    });
+
+    // Fetch featured video
+    featuredVideo = await prisma.video.findFirst({
+      where: { isFeatured: true },
+    });
+  } catch {
+    upcomingEvents = [];
+    featuredVideo = null;
+  }
 
   return (
     <main className="min-h-screen bg-background">
@@ -181,7 +192,7 @@ export default async function HomePage() {
               Kumpulkan Koin &amp; Klaim Merchandise!
             </h2>
             <p className="font-body-md text-surface-container max-w-xl text-sm md:text-base">
-              Setiap kali Anda menghadiri tugas misa bulanan, latihan bersama, atau menyelesaikan materi katekese, klaim koin Anda dan tukarkan di katalog merchandise resmi SMI.
+              Setiap kali Anda menghadiri webinar daring, temu virtual komunitas, atau menyelesaikan kuis liturgi, kumpulkan koin Anda dan tukarkan dengan merchandise resmi SMI.
             </p>
           </div>
           <Link

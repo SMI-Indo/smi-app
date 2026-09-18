@@ -1,15 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { VideoGallery } from "@/components/video/VideoGallery";
 import Image from "next/image";
+import { Video } from "@prisma/client";
 
 export const revalidate = 60; // Cache cache selama 60 detik
 
 export default async function VideoPage() {
-  // Ambil data video dari database
-  const videos = await prisma.video.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  let videos: Video[] = [];
+  try {
+    videos = await prisma.video.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+  } catch {
+    videos = [];
+  }
 
   return (
     <main className="min-h-screen bg-background py-12">

@@ -17,7 +17,7 @@ describe("POST /api/newsletter/subscribe", () => {
     vi.clearAllMocks();
   });
 
-  const createRequest = (body: any) => {
+  const createRequest = (body: unknown) => {
     return new NextRequest("http://localhost/api/newsletter/subscribe", {
       method: "POST",
       body: JSON.stringify(body),

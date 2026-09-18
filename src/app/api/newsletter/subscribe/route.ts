@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, data: subscription }, { status: 200 });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Terjadi kesalahan sistem. Coba lagi nanti." },
       { status: 500 }

@@ -17,7 +17,8 @@ export const authOptions: AuthOptions = {
           name: profile.name,
           email: profile.email,
           image: profile.picture,
-          role: "MEMBER", // Default role
+          role: "MEMBER",
+          isApproved: false, // Default belum di-ACC
           coins: 0,
         };
       },
@@ -50,12 +51,18 @@ export const authOptions: AuthOptions = {
           throw new Error("Email atau password salah");
         }
 
+        // Cek status ACC dari Admin (Admin bebas lewat, member wajib isApproved = true)
+        if (user.role !== "ADMIN" && !user.isApproved) {
+          throw new Error("Akun Anda belum disetujui (di-ACC) oleh Admin. Silakan hubungi pengurus SMI.");
+        }
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           image: user.image,
           role: user.role,
+          isApproved: user.isApproved,
         };
       },
     }),
@@ -64,17 +71,47 @@ export const authOptions: AuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        const existing = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (!existing) {
+          // Buat akun baru berstatus pending approval
+          await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name || "Anggota Baru",
+              image: user.image,
+              role: "MEMBER",
+              isApproved: false,
+              coins: 0,
+            },
+          });
+          return "/login?error=PendingApproval";
+        }
+
+        // Jika ada tapi belum di-ACC
+        if (existing.role !== "ADMIN" && !existing.isApproved) {
+          return "/login?error=PendingApproval";
+        }
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
+        token.role = user.role;
+        token.isApproved = user.isApproved;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
+        session.user.id = token.id as string;
+        session.user.role = (token.role as string) || "MEMBER";
+        session.user.isApproved = Boolean(token.isApproved);
       }
       return session;
     },

@@ -20,7 +20,7 @@ const subscribeFormSchema = z.object({
 type SubscribeValues = z.infer<typeof subscribeFormSchema>;
 
 export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
-  const [selectedTab, setSelectedTab] = useState<"ALL" | "TUGAS" | "LATIHAN" | "ACARA">("ALL");
+  const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "ACARA">("ALL");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ success: boolean; text: string } | null>(null);
 
@@ -44,7 +44,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
       });
       const responseJson = await res.json();
       if (res.ok) {
-        setMsg({ success: true, text: "Terima kasih! Anda berhasil berlangganan jadwal." });
+        setMsg({ success: true, text: "Terima kasih! Anda berhasil berlangganan jadwal acara daring SMI." });
         reset();
       } else {
         setMsg({ success: false, text: responseJson.error || "Gagal mendaftar." });
@@ -66,14 +66,14 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
       <div className="flex flex-wrap gap-2 justify-center border-b border-outline-variant pb-4">
         {[
           { id: "ALL" as const, label: "Semua Jadwal" },
-          { id: "TUGAS" as const, label: "Jadwal Tugas" },
-          { id: "LATIHAN" as const, label: "Jadwal Latihan" },
-          { id: "ACARA" as const, label: "Jadwal Acara" },
+          { id: "WEBINAR" as const, label: "Webinar Daring" },
+          { id: "TEMU_ONLINE" as const, label: "Temu Virtual" },
+          { id: "ACARA" as const, label: "Acara Komunitas" },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setSelectedTab(tab.id)}
-            className={`px-6 py-2 rounded-full font-label-sm transition-all border ${
+            className={`px-6 py-2 rounded-full font-label-sm transition-all border cursor-pointer ${
               selectedTab === tab.id
                 ? "bg-primary border-primary text-white"
                 : "bg-surface border-outline/30 text-on-surface-variant hover:bg-surface-container"
@@ -88,38 +88,48 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredEvents.map((evt) => {
           const isCompleted = evt.status === "COMPLETED";
+          const categoryLabel =
+            evt.category === "WEBINAR"
+              ? "Webinar Daring"
+              : evt.category === "TEMU_ONLINE"
+              ? "Temu Virtual"
+              : evt.category === "WORKSHOP"
+              ? "Workshop Liturgi"
+              : "Acara Komunitas";
+
           return (
             <div
               key={evt.id}
-              className="p-6 rounded-2xl border border-outline-variant card-glow flex flex-col justify-between h-48 relative overflow-hidden transition-transform hover:scale-[1.01]"
-              style={{ backgroundColor: "#fdb242", opacity: 0.95 }}
+              className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant card-glow flex flex-col justify-between h-48 relative overflow-hidden transition-all hover:border-primary/40 hover:-translate-y-0.5"
             >
               <div>
                 <div className="flex justify-between items-start mb-3">
-                  <span className="font-label-sm text-xs px-3 py-1 rounded-full bg-neutral-900/10 text-neutral-900">
-                    {evt.category}
+                  <span className="font-label-sm text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-semibold">
+                    {categoryLabel}
                   </span>
                   <span
-                    className={`font-label-sm text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-full ${
-                      isCompleted ? "bg-[#941a00] text-white" : "bg-[#c02400] text-white"
+                    className={`font-label-sm text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${
+                      isCompleted
+                        ? "bg-surface-container text-on-surface-variant"
+                        : "bg-primary text-white"
                     }`}
                   >
                     {isCompleted ? "Selesai" : "Akan Datang"}
                   </span>
                 </div>
-                <h3 className="font-headline-md text-xl text-neutral-900 font-bold line-clamp-2">
+                <h3 className="font-headline-md text-xl text-on-surface font-bold line-clamp-2">
                   {evt.title}
                 </h3>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-neutral-955 mt-4 font-mono">
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">schedule</span>
+              <div className="flex items-center justify-between text-xs text-on-surface-variant mt-4 font-mono">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-primary">schedule</span>
                   <span>{evt.time}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="material-symbols-outlined text-sm">location_on</span>
-                  <span className="truncate max-w-[150px]">{evt.location}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-primary">location_on</span>
+                  <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
             </div>
@@ -143,7 +153,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
           <span className="material-symbols-outlined text-3xl text-primary">notifications_active</span>
           <h3 className="font-headline-md text-on-surface">Dapatkan Jadwal Langsung</h3>
           <p className="font-body-md text-sm text-on-surface-variant">
-            Berlangganan sekarang untuk menerima pembaharuan jadwal tugas atau latihan langsung ke Email / WhatsApp Anda.
+            Berlangganan sekarang untuk menerima pembaharuan jadwal webinar dan temu daring SMI langsung ke Email / WhatsApp Anda.
           </p>
         </div>
 
