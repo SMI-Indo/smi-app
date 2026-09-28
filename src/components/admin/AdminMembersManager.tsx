@@ -7,6 +7,7 @@ export interface MemberData {
   name: string | null;
   nickname: string | null;
   email: string;
+  phone: string | null;
   role: "MEMBER" | "ADMIN";
   isApproved: boolean;
   memberId: string | null;
@@ -26,34 +27,49 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
   const [search, setSearch] = useState("");
   const [filterTab, setFilterTab] = useState<"ALL" | "PENDING" | "APPROVED" | "ADMIN">("ALL");
 
-  // Modal states
-  const [editingMember, setEditingMember] = useState<MemberData | null>(null);
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    nickname: string;
-    email: string;
-    parish: string;
-    rank: string;
-    role: "MEMBER" | "ADMIN";
-    coins: number;
-    memberId: string;
-    isApproved: boolean;
-  }>({
+  // Modal 1: Create New Member Modal
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
     name: "",
     nickname: "",
     email: "",
+    phone: "",
+    password: "password123",
     parish: "",
     rank: "Mula",
-    role: "MEMBER",
+    role: "MEMBER" as "MEMBER" | "ADMIN",
+    coins: 50,
+    memberId: "",
+    isApproved: true,
+  });
+
+  // Modal 2: Edit Member Modal
+  const [editingMember, setEditingMember] = useState<MemberData | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    nickname: "",
+    email: "",
+    phone: "",
+    parish: "",
+    rank: "Mula",
+    role: "MEMBER" as "MEMBER" | "ADMIN",
     coins: 0,
+    violationPoints: 0,
     memberId: "",
     isApproved: false,
   });
 
+  // Modal 3: Reset Password Modal
   const [resetPwMember, setResetPwMember] = useState<MemberData | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Modal 4: Add Violation Modal
+  const [violationMember, setViolationMember] = useState<MemberData | null>(null);
+  const [violationPoints, setViolationPoints] = useState<number>(5);
+  const [violationReason, setViolationReason] = useState("");
+
+  // Modal 5: Delete Confirmation Modal
   const [deletingMember, setDeletingMember] = useState<MemberData | null>(null);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -66,6 +82,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
       (m.name && m.name.toLowerCase().includes(q)) ||
       (m.nickname && m.nickname.toLowerCase().includes(q)) ||
       m.email.toLowerCase().includes(q) ||
+      (m.phone && m.phone.toLowerCase().includes(q)) ||
       (m.memberId && m.memberId.toLowerCase().includes(q)) ||
       (m.parish && m.parish.toLowerCase().includes(q));
 
@@ -77,7 +94,16 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     return true;
   });
 
-  // Toggle ACC quick action
+  // Format WhatsApp number link
+  const getWhatsAppLink = (phone: string | null) => {
+    if (!phone) return null;
+    let clean = phone.replace(/[^0-9]/g, "");
+    if (clean.startsWith("0")) clean = "62" + clean.slice(1);
+    if (!clean.startsWith("62")) clean = "62" + clean;
+    return `https://wa.me/${clean}`;
+  };
+
+  // Toggle ACC
   const handleToggleApprove = async (member: MemberData) => {
     setLoadingAction(`approve-${member.id}`);
     setMessage(null);
@@ -114,6 +140,53 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     }
   };
 
+  // Handle Create Member
+  const handleCreateMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoadingAction("create-member");
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/members", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "CREATE",
+          ...createForm,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMembers((prev) => [data.user, ...prev]);
+        setMessage({
+          type: "success",
+          text: `Anggota baru ${data.user.name} (${data.user.memberId}) berhasil ditambahkan dan dapat langsung login.`,
+        });
+        setIsCreateOpen(false);
+        setCreateForm({
+          name: "",
+          nickname: "",
+          email: "",
+          phone: "",
+          password: "password123",
+          parish: "",
+          rank: "Mula",
+          role: "MEMBER",
+          coins: 50,
+          memberId: "",
+          isApproved: true,
+        });
+      } else {
+        setMessage({ type: "error", text: data.error || "Gagal menambahkan anggota baru." });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   // Open Edit Modal
   const openEditModal = (member: MemberData) => {
     setEditingMember(member);
@@ -121,16 +194,18 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
       name: member.name || "",
       nickname: member.nickname || "",
       email: member.email || "",
+      phone: member.phone || "",
       parish: member.parish || "",
       rank: member.rank || "Mula",
       role: member.role || "MEMBER",
       coins: member.coins || 0,
+      violationPoints: member.violationPoints || 0,
       memberId: member.memberId || "",
       isApproved: member.isApproved,
     });
   };
 
-  // Save Full Profile Edit
+  // Save Edit
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMember) return;
@@ -165,7 +240,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     }
   };
 
-  // Save Password Reset
+  // Reset Password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetPwMember) return;
@@ -195,6 +270,56 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setNewPassword("");
       } else {
         setMessage({ type: "error", text: data.error || "Gagal mereset kata sandi." });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  // Add Violation
+  const handleAddViolation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!violationMember) return;
+
+    if (!violationReason.trim()) {
+      setMessage({ type: "error", text: "Alasan pelanggaran wajib diisi." });
+      return;
+    }
+
+    setLoadingAction("save-violation");
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/violations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: violationMember.id,
+          points: violationPoints,
+          reason: violationReason.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setMembers((prev) =>
+          prev.map((m) =>
+            m.id === violationMember.id
+              ? { ...m, violationPoints: m.violationPoints + violationPoints }
+              : m
+          )
+        );
+        setMessage({
+          type: "success",
+          text: `Pelanggaran (+${violationPoints} poin) dicatat untuk ${violationMember.name || violationMember.email}.`,
+        });
+        setViolationMember(null);
+        setViolationReason("");
+        setViolationPoints(5);
+      } else {
+        setMessage({ type: "error", text: data.error || "Gagal mencatat pelanggaran." });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -235,24 +360,33 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-headline-lg text-primary text-2xl sm:text-3xl font-extrabold flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-2xl sm:text-3xl">
               group
             </span>
-            Manajemen Anggota &amp; Akun
+            Manajemen Anggota &amp; Membership
           </h1>
           <p className="font-body-md text-on-surface-variant text-xs sm:text-sm mt-1">
-            Kelola profil lengkap, perbarui email, atur peran (Role), reset password, dan status verifikasi ID digital.
+            Input anggota manual, kelola nomor membership resmi, kontak WhatsApp/HP, poin pelanggaran, dan hak akses.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-xs bg-surface-container-high border border-outline-variant/60 text-on-surface-variant px-3 py-1.5 rounded-full font-bold">
             Total: {members.length} Anggota
           </span>
+
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-white font-label-lg text-xs font-semibold hover:bg-primary-container shadow-sm transition-all active:scale-95"
+          >
+            <span className="material-symbols-outlined text-base">person_add</span>
+            <span>Tambah Anggota Baru</span>
+          </button>
         </div>
       </div>
 
@@ -280,17 +414,16 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         </div>
       )}
 
-      {/* Filter and Search Bar */}
+      {/* Search and Filters */}
       <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Search Input */}
           <div className="relative flex-1">
             <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-xl">
               search
             </span>
             <input
               type="text"
-              placeholder="Cari nama, email, ID anggota, atau paroki..."
+              placeholder="Cari nama, email, nomor HP/WA, ID membership, atau paroki..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
@@ -306,13 +439,12 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
             )}
           </div>
 
-          {/* Filter Tabs */}
           <div className="flex flex-wrap items-center gap-1.5">
             {(
               [
                 { id: "ALL", label: "Semua" },
+                { id: "APPROVED", label: "Aktif (ACC)" },
                 { id: "PENDING", label: "Menunggu ACC" },
-                { id: "APPROVED", label: "Aktif" },
                 { id: "ADMIN", label: "Pengurus" },
               ] as const
             ).map((tab) => (
@@ -333,7 +465,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         </div>
       </div>
 
-      {/* Members Data Table */}
+      {/* Members Table */}
       <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl shadow-sm overflow-hidden">
         {filtered.length === 0 ? (
           <div className="text-center py-12 px-4">
@@ -344,7 +476,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
               Tidak ada data anggota yang cocok
             </p>
             <p className="text-xs text-on-surface-variant mt-1">
-              Coba sesuaikan kata kunci pencarian atau tab filter Anda.
+              Gunakan tombol &quot;Tambah Anggota Baru&quot; di atas untuk mendaftarkan anggota baru secara manual.
             </p>
           </div>
         ) : (
@@ -352,140 +484,385 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container-low border-b border-outline-variant/60 text-on-surface-variant font-label-lg uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3.5 pl-4 sm:pl-6">Profil Anggota</th>
+                  <th className="py-3.5 pl-4 sm:pl-6">Profil &amp; Kontak</th>
+                  <th className="py-3.5 px-3">No. HP / WA</th>
                   <th className="py-3.5 px-3">Paroki &amp; Pangkat</th>
-                  <th className="py-3.5 px-3">ID Unik</th>
-                  <th className="py-3.5 px-3">Koin</th>
+                  <th className="py-3.5 px-3">Membership ID</th>
+                  <th className="py-3.5 px-3">Pelanggaran</th>
                   <th className="py-3.5 px-3">Status ACC</th>
                   <th className="py-3.5 pr-4 sm:pr-6 text-right">Tindakan</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30">
-                {filtered.map((member) => (
-                  <tr
-                    key={member.id}
-                    className="hover:bg-surface-container-low/40 transition-colors"
-                  >
-                    {/* Profil */}
-                    <td className="py-3 pl-4 sm:pl-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                          {(member.name || member.email).charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-on-surface text-sm truncate">
-                              {member.name || "Tanpa Nama"}
-                            </span>
-                            {member.role === "ADMIN" && (
-                              <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                                ADMIN
+                {filtered.map((member) => {
+                  const waLink = getWhatsAppLink(member.phone);
+                  return (
+                    <tr
+                      key={member.id}
+                      className="hover:bg-surface-container-low/40 transition-colors"
+                    >
+                      {/* Profil */}
+                      <td className="py-3 pl-4 sm:pl-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                            {(member.name || member.email).charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-on-surface text-sm truncate">
+                                {member.name || "Tanpa Nama"}
                               </span>
+                              {member.role === "ADMIN" && (
+                                <span className="text-[10px] font-mono bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                  ADMIN
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-on-surface-variant/70 text-xs block truncate">
+                              {member.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* No HP / WhatsApp */}
+                      <td className="py-3 px-3">
+                        {member.phone ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs text-on-surface font-semibold">
+                              {member.phone}
+                            </span>
+                            {waLink && (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Chat WhatsApp"
+                                className="text-emerald-600 hover:text-emerald-700 p-0.5"
+                              >
+                                <span className="material-symbols-outlined text-sm">chat</span>
+                              </a>
                             )}
                           </div>
-                          <span className="text-on-surface-variant/70 text-xs block truncate">
-                            {member.email}
+                        ) : (
+                          <span className="text-on-surface-variant/40 italic text-[11px]">
+                            -
                           </span>
+                        )}
+                      </td>
+
+                      {/* Paroki & Pangkat */}
+                      <td className="py-3 px-3">
+                        <div className="text-on-surface font-medium truncate max-w-[140px]">
+                          {member.parish || "-"}
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Paroki & Pangkat */}
-                    <td className="py-3 px-3">
-                      <div className="text-on-surface font-medium truncate max-w-[160px]">
-                        {member.parish || "-"}
-                      </div>
-                      <span className="text-[11px] text-secondary font-semibold">
-                        {member.rank || "Mula"}
-                      </span>
-                    </td>
-
-                    {/* ID Unik */}
-                    <td className="py-3 px-3">
-                      {member.memberId ? (
-                        <span className="font-mono text-xs font-bold text-primary bg-primary/5 px-2 py-1 rounded-md border border-primary/20">
-                          {member.memberId}
+                        <span className="text-[11px] text-secondary font-semibold">
+                          {member.rank || "Mula"}
                         </span>
-                      ) : (
-                        <span className="text-on-surface-variant/50 italic text-[11px]">
-                          Belum diset
-                        </span>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* Koin */}
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-1 text-secondary font-bold font-mono">
-                        <span className="material-symbols-outlined text-sm">monetization_on</span>
-                        <span>{member.coins}</span>
-                      </div>
-                    </td>
+                      {/* ID Membership */}
+                      <td className="py-3 px-3">
+                        {member.memberId ? (
+                          <span className="font-mono text-xs font-bold text-primary bg-primary/5 px-2.5 py-1 rounded-md border border-primary/20 block w-fit">
+                            {member.memberId}
+                          </span>
+                        ) : (
+                          <span className="text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[10px] font-bold">
+                            Belum Ada ID
+                          </span>
+                        )}
+                      </td>
 
-                    {/* Status ACC */}
-                    <td className="py-3 px-3">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleApprove(member)}
-                        disabled={loadingAction === `approve-${member.id}`}
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold transition-all shadow-sm ${
-                          member.isApproved
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                            : "bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-sm">
-                          {member.isApproved ? "verified" : "hourglass_top"}
-                        </span>
-                        <span>{member.isApproved ? "Aktif" : "Menunggu"}</span>
-                      </button>
-                    </td>
+                      {/* Pelanggaran */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`font-mono text-xs font-bold px-2 py-0.5 rounded-full ${
+                              member.violationPoints > 0
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-surface-container text-on-surface-variant/70"
+                            }`}
+                          >
+                            {member.violationPoints} pt
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setViolationMember(member);
+                              setViolationReason("");
+                              setViolationPoints(5);
+                            }}
+                            title="Tambah Catatan Pelanggaran"
+                            className="p-1 rounded text-on-surface-variant/60 hover:text-error hover:bg-error-container/30 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">add_alert</span>
+                          </button>
+                        </div>
+                      </td>
 
-                    {/* Tindakan */}
-                    <td className="py-3 pr-4 sm:pr-6 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Edit Button */}
+                      {/* Status ACC */}
+                      <td className="py-3 px-3">
                         <button
                           type="button"
-                          onClick={() => openEditModal(member)}
-                          title="Edit Data Lengkap"
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+                          onClick={() => handleToggleApprove(member)}
+                          disabled={loadingAction === `approve-${member.id}`}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold transition-all shadow-sm ${
+                            member.isApproved
+                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                              : "bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
+                          }`}
                         >
-                          <span className="material-symbols-outlined text-lg">edit</span>
+                          <span className="material-symbols-outlined text-sm">
+                            {member.isApproved ? "verified" : "hourglass_top"}
+                          </span>
+                          <span>{member.isApproved ? "Aktif" : "Menunggu"}</span>
                         </button>
+                      </td>
 
-                        {/* Reset Password Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setResetPwMember(member);
-                            setNewPassword("");
-                          }}
-                          title="Reset Password Anggota"
-                          className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-secondary transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-lg">lock_reset</span>
-                        </button>
+                      {/* Tindakan */}
+                      <td className="py-3 pr-4 sm:pr-6 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(member)}
+                            title="Edit Data Lengkap"
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">edit</span>
+                          </button>
 
-                        {/* Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => setDeletingMember(member)}
-                          title="Hapus Anggota"
-                          className="p-1.5 rounded-lg text-error/70 hover:bg-error-container/40 hover:text-error transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-lg">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetPwMember(member);
+                              setNewPassword("");
+                            }}
+                            title="Reset Password Anggota"
+                            className="p-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-secondary transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">lock_reset</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeletingMember(member)}
+                            title="Hapus Anggota"
+                            className="p-1.5 rounded-lg text-error/70 hover:bg-error-container/40 hover:text-error transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-lg">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* MODAL 1: Edit Full Member Profile */}
+      {/* MODAL 1: Tambah Anggota Baru Manual */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl w-full max-w-lg overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-outline-variant/60 flex items-center justify-between bg-surface-container-low/40">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-xl">person_add</span>
+                <h2 className="font-headline-md text-primary font-bold text-base sm:text-lg">
+                  Tambah Anggota Baru (Manual)
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCreateOpen(false)}
+                className="text-on-surface-variant/60 hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateMember} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-xs text-on-surface-variant leading-relaxed">
+                💡 <span className="font-bold text-primary">Aturan Membership:</span> Hanya anggota dengan <strong>Nomor Membership ID</strong> terisi dan status <strong>Aktif (ACC)</strong> yang dapat melakukan login ke website.
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Nama Lengkap *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    placeholder="Nama anggota..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Nama Panggilan
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.nickname}
+                    onChange={(e) => setCreateForm({ ...createForm, nickname: e.target.value })}
+                    placeholder="Nama akrab..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Email Akun *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    placeholder="anggota@email.com"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    No. HP / WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.phone}
+                    onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                    placeholder="misal: 081234567890"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Nomor Membership ID *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.memberId}
+                    onChange={(e) => setCreateForm({ ...createForm, memberId: e.target.value })}
+                    placeholder="misal: SMI-2026-0005"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono uppercase font-bold focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Kata Sandi Awal *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    placeholder="password123"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Asal Paroki
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.parish}
+                    onChange={(e) => setCreateForm({ ...createForm, parish: e.target.value })}
+                    placeholder="Paroki Asal..."
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Pangkat Misdinar
+                  </label>
+                  <select
+                    value={createForm.rank}
+                    onChange={(e) => setCreateForm({ ...createForm, rank: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  >
+                    <option value="Mula">Mula</option>
+                    <option value="Madya">Madya</option>
+                    <option value="Utama">Utama</option>
+                    <option value="Pembina">Pembina</option>
+                    <option value="Pengurus">Pengurus</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Peran (Role)
+                  </label>
+                  <select
+                    value={createForm.role}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, role: e.target.value as "MEMBER" | "ADMIN" })
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-bold focus:border-primary focus:outline-none"
+                  >
+                    <option value="MEMBER">MEMBER (Anggota Biasa)</option>
+                    <option value="ADMIN">ADMIN (Pengurus Portal)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Bonus Koin Awal
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={createForm.coins}
+                    onChange={(e) =>
+                      setCreateForm({ ...createForm, coins: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-5 border-t border-outline-variant/60">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-4 py-2 rounded-full border border-outline/30 text-xs font-label-lg text-on-surface-variant hover:bg-surface-container"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingAction === "create-member"}
+                  className="px-6 py-2 rounded-full bg-primary text-white text-xs font-label-lg font-bold hover:bg-primary-container shadow-sm disabled:opacity-50"
+                >
+                  {loadingAction === "create-member" ? "Menambahkan..." : "Tambah Anggota"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Edit Member Profile */}
       {editingMember && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl w-full max-w-lg overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
@@ -493,7 +870,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-xl">manage_accounts</span>
                 <h2 className="font-headline-md text-primary font-bold text-base sm:text-lg">
-                  Edit Profil Anggota
+                  Edit Profil &amp; Data Anggota
                 </h2>
               </div>
               <button
@@ -533,29 +910,43 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
-                  Email Akun
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Email Akun
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    No. HP / WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    placeholder="misal: 081234567890"
+                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
-                    Asal Paroki / Keuskupan
+                    Asal Paroki
                   </label>
                   <input
                     type="text"
                     value={editForm.parish}
                     onChange={(e) => setEditForm({ ...editForm, parish: e.target.value })}
-                    placeholder="misal: Paroki St. Paulus"
                     className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -578,17 +969,17 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
-                    ID Anggota Unik
+                    Membership ID
                   </label>
                   <input
                     type="text"
                     value={editForm.memberId}
                     onChange={(e) => setEditForm({ ...editForm, memberId: e.target.value })}
-                    placeholder="Contoh: SMI-2026-001"
-                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono uppercase focus:border-primary focus:outline-none"
+                    placeholder="SMI-2026-001"
+                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-xs font-mono uppercase font-bold focus:border-primary focus:outline-none"
                   />
                 </div>
 
@@ -601,7 +992,22 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     min={0}
                     value={editForm.coins}
                     onChange={(e) => setEditForm({ ...editForm, coins: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-xs font-mono focus:border-primary focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                    Poin Pelanggaran
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editForm.violationPoints}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, violationPoints: parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-xs font-mono text-error font-bold focus:border-primary focus:outline-none"
                   />
                 </div>
               </div>
@@ -613,7 +1019,9 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                   </label>
                   <select
                     value={editForm.role}
-                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value as "MEMBER" | "ADMIN" })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, role: e.target.value as "MEMBER" | "ADMIN" })
+                    }
                     className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-bold focus:border-primary focus:outline-none"
                   >
                     <option value="MEMBER">MEMBER (Anggota Biasa)</option>
@@ -636,7 +1044,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-6 border-t border-outline-variant/60">
+              <div className="flex items-center justify-end gap-3 pt-5 border-t border-outline-variant/60">
                 <button
                   type="button"
                   onClick={() => setEditingMember(null)}
@@ -657,7 +1065,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         </div>
       )}
 
-      {/* MODAL 2: Reset Password Member */}
+      {/* MODAL 3: Reset Password */}
       {resetPwMember && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
@@ -732,7 +1140,85 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         </div>
       )}
 
-      {/* MODAL 3: Delete Confirmation */}
+      {/* MODAL 4: Tambah Catatan Pelanggaran */}
+      {violationMember && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-amber-300 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-amber-200 flex items-center justify-between bg-amber-50">
+              <div className="flex items-center gap-2 text-amber-900">
+                <span className="material-symbols-outlined text-xl">warning</span>
+                <h2 className="font-headline-md font-bold text-base">Catat Pelanggaran</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViolationMember(null)}
+                className="text-on-surface-variant/60 hover:text-on-surface"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddViolation} className="p-6 space-y-4">
+              <p className="text-xs text-on-surface-variant">
+                Catat penambahan poin kedisiplinan untuk anggota{" "}
+                <span className="font-bold text-on-surface">
+                  {violationMember.name || violationMember.email}
+                </span>{" "}
+                (Saat ini: {violationMember.violationPoints} poin).
+              </p>
+
+              <div>
+                <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                  Poin Pelanggaran (+Poin)
+                </label>
+                <select
+                  value={violationPoints}
+                  onChange={(e) => setViolationPoints(parseInt(e.target.value) || 5)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-bold font-mono focus:border-primary focus:outline-none"
+                >
+                  <option value={5}>+5 Poin (Terlambat / Ketidakhadiran)</option>
+                  <option value={10}>+10 Poin (Absen Tanpa Keterangan)</option>
+                  <option value={15}>+15 Poin (Indisipliner Serius)</option>
+                  <option value={20}>+20 Poin (Pelanggaran Berat)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
+                  Alasan / Keterangan Pelanggaran *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={violationReason}
+                  onChange={(e) => setViolationReason(e.target.value)}
+                  placeholder="misal: Tidak hadir pada pertemuan bulanan online tanpa konfirmasi..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-outline-variant/60">
+                <button
+                  type="button"
+                  onClick={() => setViolationMember(null)}
+                  className="px-4 py-2 rounded-full border border-outline/30 text-xs font-label-lg text-on-surface-variant hover:bg-surface-container"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingAction === "save-violation"}
+                  className="px-6 py-2 rounded-full bg-amber-700 text-white text-xs font-label-lg font-bold hover:bg-amber-800 shadow-sm disabled:opacity-50"
+                >
+                  {loadingAction === "save-violation" ? "Menyimpan..." : "Simpan Catatan"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Delete Confirmation */}
       {deletingMember && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-error/30 rounded-2xl w-full max-w-md overflow-hidden shadow-xl animate-in fade-in zoom-in-95 duration-200">
@@ -756,7 +1242,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                 <span className="font-bold text-on-surface">
                   {deletingMember.name || deletingMember.email}
                 </span>{" "}
-                secara permanen? Tindakan ini tidak dapat dibatalkan dan seluruh data terkait akan dihapus.
+                secara permanen?
               </p>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-outline-variant/60">

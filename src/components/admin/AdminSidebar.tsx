@@ -41,6 +41,11 @@ export function AdminSidebar({ isOpen, onClose, adminUser }: AdminSidebarProps) 
       icon: "smart_display",
     },
     {
+      href: "/admin/quiz",
+      label: "Kuis Liturgi",
+      icon: "quiz",
+    },
+    {
       href: "/admin/pelanggaran",
       label: "Poin Pelanggaran",
       icon: "warning",

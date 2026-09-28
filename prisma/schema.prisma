@@ -49,6 +49,7 @@ model User {
   parish          String?           // Asal Paroki / Keuskupan
   rank            String?           // Pangkat Misdinar (e.g. Mula, Madya, Utama, Pembina)
   memberId        String?           @unique         // ID Unik diinput manual oleh Admin (e.g. SMI-ONLINE-001)
+  phone           String?           // Nomor HP / WhatsApp
   coins           Int               @default(0)
   attendanceCount Int               @default(0)
   cardValidUntil  DateTime?

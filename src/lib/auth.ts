@@ -51,9 +51,13 @@ export const authOptions: AuthOptions = {
           throw new Error("Email atau password salah");
         }
 
-        // Cek status ACC dari Admin (Admin bebas lewat, member wajib isApproved = true)
-        if (user.role !== "ADMIN" && !user.isApproved) {
-          throw new Error("Akun Anda belum disetujui (di-ACC) oleh Admin. Silakan hubungi pengurus SMI.");
+        // Cek status keanggotaan dari Admin (Admin bebas lewat, member wajib isApproved = true dan memiliki memberId)
+        if (user.role !== "ADMIN") {
+          if (!user.isApproved || !user.memberId) {
+            throw new Error(
+              "Akun Anda belum memiliki nomor keanggotaan (Membership ID) aktif yang terdaftar oleh Pengurus SMI. Silakan hubungi admin."
+            );
+          }
         }
 
         return {

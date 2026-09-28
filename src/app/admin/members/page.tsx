@@ -17,6 +17,7 @@ export default async function AdminMembersPage() {
         name: true,
         nickname: true,
         email: true,
+        phone: true,
         role: true,
         isApproved: true,
         memberId: true,

@@ -1,0 +1,38 @@
+"use client";
+
+import { useEffect } from "react";
+
+export default function AdminQuizError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    console.error("Admin quiz error:", error);
+  }, [error]);
+
+  return (
+    <div className="bg-surface-container-lowest border border-error/30 rounded-2xl p-8 text-center max-w-lg mx-auto my-12 shadow-sm">
+      <div className="w-12 h-12 rounded-full bg-error-container text-error mx-auto flex items-center justify-center mb-4">
+        <span className="material-symbols-outlined text-2xl">error</span>
+      </div>
+
+      <h2 className="font-headline-md text-primary font-bold text-lg mb-2">
+        Gagal Memuat Kuis
+      </h2>
+      <p className="font-body-md text-on-surface-variant text-xs sm:text-sm mb-6">
+        {error.message || "Terjadi kendala saat mengambil data kuis dari basis data."}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => reset()}
+        className="px-6 py-2.5 rounded-full bg-primary text-white font-label-lg text-xs font-semibold hover:bg-primary-container transition-colors shadow-sm"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  );
+}

@@ -68,6 +68,12 @@ async function sync() {
         ALTER TABLE "User" ADD COLUMN "cardValidUntil" TIMESTAMP(3);
         RAISE NOTICE 'Added cardValidUntil to User';
       END IF;
+
+      -- Add phone if missing
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='User' AND column_name='phone') THEN
+        ALTER TABLE "User" ADD COLUMN "phone" TEXT;
+        RAISE NOTICE 'Added phone to User';
+      END IF;
     END $$;
   `);
   console.log('✅ User table columns verified/updated!');
@@ -86,6 +92,40 @@ async function sync() {
     );
   `);
   console.log('✅ ViolationRecord table verified!');
+
+  // 2.1 Create Quiz and QuizQuestion tables if not exists
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS "Quiz" (
+      "id" TEXT PRIMARY KEY,
+      "title" TEXT NOT NULL,
+      "description" TEXT,
+      "rewardCoins" INTEGER NOT NULL DEFAULT 10,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS "QuizQuestion" (
+      "id" TEXT PRIMARY KEY,
+      "quizId" TEXT NOT NULL,
+      "question" TEXT NOT NULL,
+      "options" TEXT[] NOT NULL,
+      "correctIdx" INTEGER NOT NULL,
+      "explanation" TEXT,
+      CONSTRAINT "QuizQuestion_quizId_fkey" FOREIGN KEY ("quizId") REFERENCES "Quiz"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS "UserQuizAttempt" (
+      "id" TEXT PRIMARY KEY,
+      "userId" TEXT NOT NULL,
+      "quizId" TEXT NOT NULL,
+      "score" INTEGER NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "UserQuizAttempt_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+      CONSTRAINT "UserQuizAttempt_quizId_fkey" FOREIGN KEY ("quizId") REFERENCES "Quiz"("id") ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS "UserQuizAttempt_userId_quizId_key" ON "UserQuizAttempt"("userId", "quizId");
+  `);
+  console.log('✅ Quiz tables verified!');
 
   // 3. Upsert admin users: admin@smi.org and publicrelation@smi.org
   const hashedPassword = await bcrypt.hash("password123", 10);
