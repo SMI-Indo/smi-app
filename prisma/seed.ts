@@ -34,6 +34,55 @@ async function main() {
   });
   console.log("Seed: Test admin created/verified:", testUser.email);
 
+  // 1.1 Create Public Relations Admin Users
+  await prisma.user.upsert({
+    where: { email: "publicrelation@smi.org" },
+    update: {
+      isApproved: true,
+      role: "ADMIN",
+    },
+    create: {
+      email: "publicrelation@smi.org",
+      name: "Public Relations SMI",
+      nickname: "PubRel SMI",
+      password: hashedPassword,
+      role: "ADMIN",
+      parish: "Komunitas Sahabat Misdinar Indonesia",
+      rank: "Pengurus Humas",
+      memberId: "SMI-PUBREL-001",
+      coins: 100,
+      attendanceCount: 25,
+      isApproved: true,
+      violationPoints: 0,
+      cardValidUntil: new Date("2028-12-31"),
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "publicrelationsahabatmisdinar@gmail.com" },
+    update: {
+      isApproved: true,
+      role: "ADMIN",
+      password: hashedPassword,
+    },
+    create: {
+      email: "publicrelationsahabatmisdinar@gmail.com",
+      name: "Public Relation SMI",
+      nickname: "PubRel SMI",
+      password: hashedPassword,
+      role: "ADMIN",
+      parish: "Komunitas Sahabat Misdinar Indonesia",
+      rank: "Pengurus Humas",
+      memberId: "SMI-PR-001",
+      coins: 100,
+      attendanceCount: 25,
+      isApproved: true,
+      violationPoints: 0,
+      cardValidUntil: new Date("2028-12-31"),
+    },
+  });
+  console.log("Seed: Public Relations admin accounts verified");
+
   // 2. Create Real SMI Online Community Events (Webinar, Temu Virtual)
   await prisma.event.deleteMany({});
   await prisma.event.createMany({

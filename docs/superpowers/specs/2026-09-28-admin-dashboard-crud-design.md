@@ -7,7 +7,7 @@
 ---
 
 ## 1. Latar Belakang & Tujuan
-Aplikasi Sahabat Misdinar Indonesia (SMI) sebelumnya telah memiliki proteksi middleware untuk rute `/admin` dan fitur verifikasi/ACC ID anggota di `/admin/page.tsx`, serta pencatatan pelanggaran di `/admin/pelanggaran`. Namun, belum tersedia modul CRUD lengkap untuk pengelolaan profil dan akun anggota (edit data, email, reset password, hapus akun), serta belum ada modul manajemen konten utama (Jadwal Kegiatan / Event dan Galeri Video).
+Aplikasi Sahabat Misdinar Indonesia (SMI) sebelumnya telah memiliki proteksi middleware untuk rute `/admin` dan fitur verifikasi/ACC ID anggota di `/admin/page.tsx`, serta pencatatan pelanggaran di `/admin/pelanggaran`. Namun, belum tersedia modul CRUD lengkap untuk pengelolaan profil dan akun anggota (edit data, email, reset password, hapus akun), serta belum ada modul manajemen konten utama (Jadwal Kegiatan / Event dan Galeri Video). Selain itu, tombol otentikasi sosial 'Masuk dengan Google' di halaman login perlu ditandai dengan teks `[COMING SOON]` dan dinonaktifkan sementara.
 
 Dokumen ini memuat spesifikasi teknis untuk membangun **Admin Dashboard Terpadu SMI** dengan pendekatan modular sub-rute Next.js App Router, layout sidebar modern yang responsif sesuai *Sacred Community Design System*, serta pembuatan dan sinkronisasi akun admin `publicrelation` ke database Supabase.
 
