@@ -1,37 +1,61 @@
 import { prisma } from "@/lib/prisma";
-import { AdminMembersClient, AdminUser } from "@/components/admin/AdminMembersClient";
+import {
+  AdminOverviewClient,
+  AdminStats,
+  PendingMember,
+} from "@/components/admin/AdminOverviewClient";
 
-export const revalidate = 0; // Data admin harus selalu real-time
+export const revalidate = 0; // Data admin selalu real-time
 
-export default async function AdminMembersPage() {
-  let users: AdminUser[] = [];
+export default async function AdminOverviewPage() {
+  let stats: AdminStats = {
+    totalUsers: 0,
+    pendingUsers: 0,
+    activeEvents: 0,
+    totalVideos: 0,
+    totalViolations: 0,
+  };
+
+  let pending: PendingMember[] = [];
 
   try {
-    const rawUsers = await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        nickname: true,
-        email: true,
-        role: true,
-        isApproved: true,
-        memberId: true,
-        parish: true,
-        rank: true,
-        coins: true,
-        violationPoints: true,
-        createdAt: true,
-      },
-    });
+    const [totalUsers, pendingUsers, activeEvents, totalVideos, totalViolations, rawPending] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { isApproved: false } }),
+        prisma.event.count({ where: { status: "UPCOMING" } }),
+        prisma.video.count(),
+        prisma.violationRecord.count(),
+        prisma.user.findMany({
+          where: { isApproved: false },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: {
+            id: true,
+            name: true,
+            nickname: true,
+            email: true,
+            parish: true,
+            createdAt: true,
+          },
+        }),
+      ]);
 
-    users = rawUsers.map((u) => ({
-      ...u,
-      createdAt: u.createdAt.toISOString(),
+    stats = {
+      totalUsers,
+      pendingUsers,
+      activeEvents,
+      totalVideos,
+      totalViolations,
+    };
+
+    pending = rawPending.map((p) => ({
+      ...p,
+      createdAt: p.createdAt.toISOString(),
     }));
-  } catch {
-    users = [];
+  } catch (error) {
+    console.error("Error loading admin overview page:", error);
   }
 
-  return <AdminMembersClient initialUsers={users} />;
+  return <AdminOverviewClient initialStats={stats} initialPending={pending} />;
 }
