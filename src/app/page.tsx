@@ -4,7 +4,7 @@ import { AnnouncementMarquee } from "@/components/home/AnnouncementMarquee";
 import { Event as PrismaEvent } from "@prisma/client";
 import Image from "next/image";
 
-export const revalidate = 60; // Cache for 60 seconds
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let upcomingEvents: PrismaEvent[] = [];

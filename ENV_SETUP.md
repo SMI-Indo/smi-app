@@ -137,3 +137,5 @@ pendaftaran dari menu masing-masing di portal pengurus. Agar
 Isi `RESEND_API_KEY` dan `EMAIL_FROM` (alamat pengirim yang diverifikasi di Resend)
 untuk mengirim email. Jika keduanya belum diisi, transaksi tetap tersimpan dan
 server mencatat jenis notifikasi yang dilewati tanpa mencatat data penerima.
+Kuis Liturgi tersembunyi secara default. Untuk menampilkannya kembali, atur
+`ENABLE_LITURGY_QUIZ=true` pada environment yang diinginkan dan redeploy.

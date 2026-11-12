@@ -17,6 +17,19 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    if (!await checkAdminSession()) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });
+    const parsed = schema.extend({ id: z.string().min(1) }).safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return NextResponse.json({ error: "Judul dan isi panduan wajib diisi." }, { status: 400 });
+    const { id, ...data } = parsed.data;
+    const guide = await prisma.liturgicalGuide.update({ where: { id }, data });
+    return NextResponse.json({ guide });
+  } catch {
+    return NextResponse.json({ error: "Perubahan panduan tidak dapat disimpan." }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     if (!await checkAdminSession()) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });

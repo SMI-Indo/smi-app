@@ -2,10 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { EventScheduler } from "@/components/event/EventScheduler";
 import { Event as PrismaEvent } from "@prisma/client";
 
-export const revalidate = 60; // Cache selama 60 detik
+export const dynamic = "force-dynamic";
 
 export default async function EventPage() {
   let events: PrismaEvent[] = [];
+  let unavailable = false;
   try {
     events = await prisma.event.findMany({
       where: {
@@ -15,8 +16,7 @@ export default async function EventPage() {
       take: 100,
     });
   } catch {
-    // Graceful degradation bila database tidur atau koneksi terputus
-    events = [];
+    unavailable = true;
   }
 
   return (
@@ -38,7 +38,7 @@ export default async function EventPage() {
 
       {/* Scheduler Interactive area */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        <EventScheduler initialEvents={events} />
+        {unavailable ? <p role="alert">Jadwal belum bisa dimuat. Coba muat ulang halaman.</p> : <EventScheduler initialEvents={events} />}
       </section>
     </main>
   );

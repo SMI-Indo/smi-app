@@ -11,7 +11,7 @@ const settings = z.object({
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
   capacity: z.coerce.number().int().min(1).max(100000),
   terms: z.string().trim().min(1).max(10000),
-  categories: z.string().trim().min(1).max(1000),
+  categories: z.string().trim().max(1000),
 });
 
 export async function saveRegistrationSettings(_: string, form: FormData): Promise<string> {

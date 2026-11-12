@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
-export function Navbar() {
+export function Navbar({ showQuiz }: { showQuiz: boolean }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -16,7 +16,7 @@ export function Navbar() {
     { href: "/event", label: "Jadwal", icon: "calendar_month" },
     { href: "/merchandise", label: "Merchandise", icon: "storefront" },
     { href: "/video", label: "Video", icon: "play_circle" },
-    { href: "/quiz", label: "Kuis", icon: "quiz", protected: true },
+    ...(showQuiz ? [{ href: "/quiz", label: "Kuis", icon: "quiz", protected: true }] : []),
     { href: "/coin", label: "Koin", icon: "token", protected: true },
     { href: "/membership", label: "Digital ID", icon: "badge", protected: true },
   ];

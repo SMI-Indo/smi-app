@@ -38,7 +38,6 @@ export const config = {
     "/admin/:path*",
     "/coin/:path*",
     "/membership/:path*",
-    "/event/:path*",
     "/video/:path*",
     "/quiz/:path*",
   ],

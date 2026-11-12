@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { checkAdminSession } from "@/lib/adminAuth";
 import { redirect } from "next/navigation";
 import { AdminLayoutClient } from "@/components/admin/AdminLayoutClient";
 
@@ -8,16 +7,16 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const auth = await checkAdminSession();
 
-  if (!session?.user || session.user.role !== "ADMIN") {
+  if (!auth) {
     redirect("/");
   }
 
   const adminUser = {
-    name: session.user.name,
-    email: session.user.email,
-    role: session.user.role,
+    name: auth.user.name,
+    email: auth.user.email,
+    role: auth.user.role,
   };
 
   return <AdminLayoutClient adminUser={adminUser}>{children}</AdminLayoutClient>;

@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -101,7 +102,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
           return (
             <div
               key={evt.id}
-              className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant card-glow flex flex-col justify-between h-48 relative overflow-hidden transition-all hover:border-primary/40 hover:-translate-y-0.5"
+              className="p-6 rounded-xl bg-surface-container-low border border-outline-variant flex flex-col justify-between gap-3"
             >
               <div>
                 <div className="flex justify-between items-start mb-3">
@@ -133,6 +134,10 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
                   <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
+              {!isCompleted && evt.registrationSlug && (
+                <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
+                  href={"/daftar/" + evt.registrationSlug}>Lihat pendaftaran</Link>
+              )}
             </div>
           );
         })}

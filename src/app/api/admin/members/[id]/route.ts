@@ -12,7 +12,6 @@ const updateMemberSchema = z.object({
   rank: z.string().optional().nullable(),
   role: z.enum(["MEMBER", "ADMIN"]).optional(),
   coins: z.number().int().min(0).optional(),
-  violationPoints: z.number().int().min(0).optional(),
   isApproved: z.boolean().optional(),
   memberId: z.string().optional().nullable(),
 });
@@ -78,7 +77,6 @@ export async function PUT(
         ...(data.rank !== undefined && { rank: data.rank ? data.rank.trim() : null }),
         ...(data.role && { role: data.role }),
         ...(data.coins !== undefined && { coins: data.coins }),
-        ...(data.violationPoints !== undefined && { violationPoints: data.violationPoints }),
         ...(data.isApproved !== undefined && { isApproved: data.isApproved }),
         ...(data.memberId !== undefined && {
           memberId: data.memberId && data.memberId.trim() !== "" ? data.memberId.trim().toUpperCase() : null,

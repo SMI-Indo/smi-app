@@ -30,12 +30,12 @@ export default async function MembershipPage() {
     });
 
     if (user) profile = {
-      name: user.name || "Anggota SMI",
-      nickname: user.nickname || "Anggota",
+      name: user.name || user.email,
+      nickname: user.nickname || user.name || user.memberId || user.email,
       email: user.email,
       image: user.image,
-      parish: user.parish || "Komunitas Daring",
-      rank: user.rank || "Mula",
+      parish: user.parish || "Paroki belum diisi",
+      rank: user.rank || "Pangkat belum diisi",
       memberId: user.memberId,
       coins: user.coins,
       attendanceCount: user.attendanceCount,

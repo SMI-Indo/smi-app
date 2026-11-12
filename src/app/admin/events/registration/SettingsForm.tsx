@@ -14,7 +14,8 @@ export function SettingsForm({ event }: { event: Settings }) {
       <label>Batas pendaftaran (WIB)<input name="deadline" type="datetime-local" defaultValue={event.deadline} required /></label>
       <label>Kuota<input name="capacity" type="number" min={1} max={100000} defaultValue={event.capacity ?? undefined} required /></label>
       <label>Syarat pendaftaran<textarea name="terms" defaultValue={event.terms} maxLength={10000} required /></label>
-      <label>Kategori (satu per baris)<textarea name="categories" defaultValue={event.categories} maxLength={1000} required /></label>
+      <label>Cabang lomba (satu per baris)<textarea name="categories" defaultValue={event.categories} maxLength={1000} aria-describedby={"mode-" + event.id} /></label>
+      <p id={"mode-" + event.id}>Kosongkan untuk kegiatan tunggal. Isi untuk membuka pilihan cabang lomba dengan kuota bersama.</p>
       <p role="status">{message}</p>
       <button disabled={pending} className="rounded-lg bg-primary text-white px-4 py-2">Simpan pengaturan</button>
     </form>

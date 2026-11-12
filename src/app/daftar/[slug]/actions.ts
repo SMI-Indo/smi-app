@@ -9,7 +9,7 @@ const input = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().toLowerCase().max(254).email(),
   phone: z.string().trim().regex(/^(?:\+628|08)\d{8,12}$/).transform((phone) => phone.replace(/^0/, "+62")),
-  category: z.string().trim().min(1).max(100),
+  category: z.string().trim().max(100).default(""),
   community: z.string().trim().min(2).max(120),
   notes: z.string().trim().max(1000),
 });
@@ -26,7 +26,10 @@ export async function register(slug: string, _: RegistrationResult, form: FormDa
         return { error: "Pendaftaran telah ditutup atau belum dibuka." } as const;
       }
       if (event._count.registrations >= event.capacity) return { error: "Kuota acara sudah penuh." } as const;
-      if (!event.registrationCategories.includes(parsed.data.category)) return { error: "Kategori yang dipilih tidak tersedia." } as const;
+      const categories = event.registrationCategories;
+      if (categories.length ? !categories.includes(parsed.data.category) : parsed.data.category !== "") {
+        return { error: "Cabang lomba yang dipilih tidak tersedia." } as const;
+      }
       const entry = await tx.eventRegistration.create({ data: { ...parsed.data, eventId: event.id } });
       return { entry, event };
     }, { isolationLevel: "Serializable" });

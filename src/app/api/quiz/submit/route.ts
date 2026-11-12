@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import * as z from "zod";
+import { liturgyQuizEnabled } from "@/lib/featureFlags";
 
 const submitQuizSchema = z.object({
   quizId: z.string().min(1),
@@ -10,6 +11,7 @@ const submitQuizSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!liturgyQuizEnabled) return NextResponse.json({ error: "Kuis tidak tersedia." }, { status: 404 });
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -33,16 +35,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    // Cek apakah user sudah pernah menyelesaikan kuis ini
-    const existingAttempt = await prisma.userQuizAttempt.findUnique({
-      where: {
-        userId_quizId: {
-          userId: user.id,
-          quizId,
-        },
-      },
-    });
-
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
       include: { questions: true },
@@ -63,45 +55,18 @@ export async function POST(req: NextRequest) {
 
     const score = Math.round((correctCount / quiz.questions.length) * 100);
     const passed = score >= 60; // Lulus jika minimal 60%
-    let coinsEarned = 0;
-
-    // Jika lulus dan belum pernah klaim reward untuk kuis ini:
-    if (passed && !existingAttempt) {
-      coinsEarned = quiz.rewardCoins;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.user.update({
-          where: { id: user.id },
-          data: { coins: { increment: coinsEarned } },
-        });
-
-        await tx.userTransaction.create({
-          data: {
-            userId: user.id,
-            amount: coinsEarned,
-            type: "CLAIM_TASK",
-            description: `Menyelesaikan Kuis Online: ${quiz.title}`,
-          },
-        });
-
-        await tx.userQuizAttempt.create({
-          data: {
-            userId: user.id,
-            quizId,
-            score,
-          },
-        });
-      });
-    } else if (!existingAttempt) {
-      // Catat percobaan walau belum lulus
-      await prisma.userQuizAttempt.create({
-        data: {
-          userId: user.id,
-          quizId,
-          score,
-        },
-      });
-    }
+    const { coinsEarned, alreadyClaimed } = await prisma.$transaction(async (tx) => {
+      const where = { userId: user.id, quizId };
+      await tx.userQuizAttempt.createMany({ data: [{ ...where, score: 0 }], skipDuplicates: true });
+      const updated = await tx.userQuizAttempt.updateMany({ where: { ...where, score: { lt: 60 } }, data: { score } });
+      if (!passed || updated.count === 0) return { coinsEarned: 0, alreadyClaimed: updated.count === 0 };
+      await tx.user.update({ where: { id: user.id }, data: { coins: { increment: quiz.rewardCoins } } });
+      await tx.userTransaction.create({ data: {
+        userId: user.id, amount: quiz.rewardCoins, type: "CLAIM_TASK",
+        description: "Menyelesaikan kuis: " + quiz.title,
+      } });
+      return { coinsEarned: quiz.rewardCoins, alreadyClaimed: false };
+    });
 
     return NextResponse.json(
       {
@@ -111,7 +76,10 @@ export async function POST(req: NextRequest) {
         correctCount,
         totalQuestions: quiz.questions.length,
         coinsEarned,
-        alreadyClaimed: !!existingAttempt,
+        alreadyClaimed,
+        review: passed || alreadyClaimed ? Object.fromEntries(quiz.questions.map((question) => [
+          question.id, { correctIdx: question.correctIdx, explanation: question.explanation },
+        ])) : undefined,
       },
       { status: 200 }
     );

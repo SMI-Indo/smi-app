@@ -39,6 +39,13 @@ export function AdminViolationsClient({
 }: AdminViolationsClientProps) {
   const [violations, setViolations] = useState<ViolationItem[]>(initialViolations);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
+  const normalizedSearch = memberSearch.trim().toLowerCase();
+  const matchingMembers = members.filter((member) =>
+    member.id === selectedUserId || [member.name, member.email, member.memberId].some(
+      (value) => value?.toLowerCase().includes(normalizedSearch),
+    ),
+  );
   const [points, setPoints] = useState<number>(5);
   const [reason, setReason] = useState("");
   const [severity, setSeverity] = useState("RINGAN");
@@ -184,22 +191,28 @@ export function AdminViolationsClient({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Member Selector */}
             <div className="space-y-1.5">
-              <label className="font-label-sm text-on-surface-variant block font-bold">
+              <label className="block">Cari nama, email, atau ID anggota
+                <input type="search" value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)}
+                  className="block w-full min-h-11 rounded-lg border border-outline px-3" />
+              </label>
+              <label htmlFor="violation-member" className="font-label-sm text-on-surface-variant block font-bold">
                 Pilih Anggota SMI
               </label>
               <select
+                id="violation-member"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
                 disabled={loading}
                 className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md text-sm focus:outline-none focus:border-primary transition-colors cursor-pointer"
               >
                 <option value="">-- Pilih Anggota yang Melanggar --</option>
-                {members.map((m) => (
+                {matchingMembers.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name || m.email} ({m.memberId || "Belum ada ID"}) - Poin saat ini: {m.violationPoints}
                   </option>
                 ))}
               </select>
+              {matchingMembers.length === 0 && <p role="status">Tidak ada anggota yang cocok.</p>}
             </div>
 
             {/* Points Selector */}

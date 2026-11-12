@@ -7,8 +7,6 @@ export interface QuestionData {
   id: string;
   question: string;
   options: string[];
-  correctIdx: number;
-  explanation: string | null;
 }
 
 export interface QuizData {
@@ -29,6 +27,7 @@ export function QuizInteractive({ quizzes }: { quizzes: QuizData[] }) {
     passed: boolean;
     correctCount: number;
     totalQuestions: number;
+    review?: Record<string, { correctIdx: number; explanation: string | null }>;
     coinsEarned: number;
     alreadyClaimed: boolean;
   } | null>(null);
@@ -226,8 +225,9 @@ export function QuizInteractive({ quizzes }: { quizzes: QuizData[] }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                     {q.options.map((opt, optIdx) => {
                       const isSelected = selectedOpt === optIdx;
-                      const isCorrect = result && q.correctIdx === optIdx;
-                      const isWrong = result && isSelected && q.correctIdx !== optIdx;
+                      const review = result?.review?.[q.id];
+                      const isCorrect = review?.correctIdx === optIdx;
+                      const isWrong = review !== undefined && isSelected && review.correctIdx !== optIdx;
 
                       let btnStyle = "bg-surface border-outline/30 hover:bg-surface-container";
                       if (isSelected && !result) {
@@ -262,9 +262,9 @@ export function QuizInteractive({ quizzes }: { quizzes: QuizData[] }) {
                   </div>
 
                   {/* Show explanation if result is revealed */}
-                  {result && q.explanation && (
+                  {result?.review?.[q.id]?.explanation && (
                     <div className="mt-2 p-3 rounded-xl bg-surface-container text-xs text-on-surface-variant font-body-md border border-outline/20">
-                      <strong>Penjelasan:</strong> {q.explanation}
+                      <strong>Penjelasan:</strong> {result.review[q.id].explanation}
                     </div>
                   )}
                 </div>

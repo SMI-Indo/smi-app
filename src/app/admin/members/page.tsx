@@ -36,6 +36,7 @@ export default async function AdminMembersPage() {
     }));
   } catch (error) {
     console.error("Error loading members page:", error);
+    return <p role="alert">Daftar anggota gagal dimuat. Coba muat ulang halaman.</p>;
   }
 
   return <AdminMembersManager initialMembers={members} />;
