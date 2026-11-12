@@ -68,10 +68,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/membership" });
-  };
-
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
       {/* Form Card with ambient card-glow and Bone White theme */}

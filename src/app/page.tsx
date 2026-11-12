@@ -78,6 +78,10 @@ export default async function HomePage() {
 
       {/* 3. Main Content Previews Container */}
       <section className="max-w-6xl mx-auto px-4 py-16 space-y-16">
+        <div className="border-b border-outline-variant pb-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+          <div><h2 className="font-headline-md text-primary">Panduan Liturgis</h2><p className="text-on-surface-variant mt-2">Baca panduan pelayanan yang diterbitkan pengurus SMI.</p></div>
+          <Link href="/panduan-liturgis" className="font-bold text-primary underline">Baca panduan</Link>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left: Schedule Preview (2 Cards) */}
@@ -87,8 +91,8 @@ export default async function HomePage() {
                 <span className="material-symbols-outlined">calendar_month</span>
                 <span>Jadwal Kegiatan Terdekat</span>
               </h2>
-              <Link href="/event" className="font-label-sm text-secondary hover:underline">
-                Lihat Semua
+              <Link href="/daftar" className="font-label-sm text-secondary hover:underline">
+                Pendaftaran Acara
               </Link>
             </div>
             

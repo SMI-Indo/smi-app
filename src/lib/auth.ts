@@ -55,7 +55,7 @@ export const authOptions: AuthOptions = {
         if (user.role !== "ADMIN") {
           if (!user.isApproved || !user.memberId) {
             throw new Error(
-              "Akun Anda belum memiliki nomor keanggotaan (Membership ID) aktif yang terdaftar oleh Pengurus SMI. Silakan hubungi admin."
+              "Akun Anda belum disetujui atau belum memiliki nomor keanggotaan. Silakan hubungi pengurus."
             );
           }
         }
@@ -96,8 +96,7 @@ export const authOptions: AuthOptions = {
           return "/login?error=PendingApproval";
         }
 
-        // Jika ada tapi belum di-ACC
-        if (existing.role !== "ADMIN" && !existing.isApproved) {
+        if (existing.role !== "ADMIN" && (!existing.isApproved || !existing.memberId)) {
           return "/login?error=PendingApproval";
         }
       }

@@ -35,6 +35,9 @@ export function AdminSidebar({ isOpen, onClose, adminUser }: AdminSidebarProps) 
       label: "Jadwal Kegiatan",
       icon: "calendar_month",
     },
+    { href: "/admin/panduan", label: "Panduan Liturgis", icon: "menu_book" },
+    { href: "/admin/events/registration", label: "Pendaftaran Acara", icon: "how_to_reg" },
+    { href: "/admin/merchandise", label: "Merchandise", icon: "storefront" },
     {
       href: "/admin/videos",
       label: "Galeri Video",

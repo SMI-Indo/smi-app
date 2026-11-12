@@ -44,6 +44,9 @@ export default async function AdminPelanggaranPage() {
       id: v.id,
       points: v.points,
       reason: v.reason,
+      severity: v.severity,
+      followUp: v.followUp,
+      status: v.status,
       date: v.date.toISOString(),
       user: v.user,
     }));

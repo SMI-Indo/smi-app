@@ -122,3 +122,18 @@ Beritahu developer bahwa file `.env.local` sudah siap diisi agar pengembangan ko
 ---
 
 > ⚠️ **PENTING:** Jangan pernah commit file `.env.local` ke Git repository. File ini berisi kredensial rahasia yang harus dijaga kerahasiaannya.
+
+## Pendaftaran acara, panduan, pelanggaran, dan merchandise
+
+Untuk database yang sudah menggunakan skema lama, terapkan dua skrip SQL di
+`prisma/sql` sebelum menjalankan versi baru. Untuk database lokal baru, jalankan
+`npx prisma db push` dengan URL database lokal dan `npx prisma generate`.
+
+Pengurus dapat menerbitkan panduan, menambahkan varian merchandise, dan membuka
+pendaftaran dari menu masing-masing di portal pengurus. Agar
+`/daftar-lombanatal` menerima pendaftaran, buat jadwal Lomba Natal dan isi slug
+`lombanatal`, tenggat WIB, kuota, syarat, serta kategori pada Pengaturan Pendaftaran.
+
+Isi `RESEND_API_KEY` dan `EMAIL_FROM` (alamat pengirim yang diverifikasi di Resend)
+untuk mengirim email. Jika keduanya belum diisi, transaksi tetap tersimpan dan
+server mencatat jenis notifikasi yang dilewati tanpa mencatat data penerima.

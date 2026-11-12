@@ -14,6 +14,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Beranda", icon: "home" },
     { href: "/event", label: "Jadwal", icon: "calendar_month" },
+    { href: "/merchandise", label: "Merchandise", icon: "storefront" },
     { href: "/video", label: "Video", icon: "play_circle" },
     { href: "/quiz", label: "Kuis", icon: "quiz", protected: true },
     { href: "/coin", label: "Koin", icon: "token", protected: true },

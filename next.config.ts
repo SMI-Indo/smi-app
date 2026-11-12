@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [{ source: "/daftar-:slug", destination: "/daftar/:slug" }];
+  },
   images: {
     remotePatterns: [
       {

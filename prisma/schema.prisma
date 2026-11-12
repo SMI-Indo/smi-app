@@ -36,6 +36,7 @@ enum TransactionType {
 }
 
 model User {
+  merchandiseOrders MerchandiseOrder[]
   id              String            @id @default(cuid())
   name            String?
   nickname        String?
@@ -64,6 +65,9 @@ model User {
 }
 
 model ViolationRecord {
+  severity String @default("RINGAN")
+  followUp String?
+  status String @default("OPEN")
   id          String   @id @default(cuid())
   userId      String
   points      Int      // Jumlah poin pelanggaran (+5, +10, dsb.)
@@ -73,6 +77,45 @@ model ViolationRecord {
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MerchandiseVariant {
+  id String @id @default(cuid())
+  name String
+  category String
+  description String
+  imageUrl String
+  size String
+  price Int
+  stock Int
+  active Boolean @default(true)
+  items MerchandiseOrderItem[]
+}
+
+model MerchandiseOrder {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name String
+  phone String
+  notes String
+  total Int
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  items MerchandiseOrderItem[]
+
+  @@index([userId, createdAt])
+}
+
+model MerchandiseOrderItem {
+  id String @id @default(cuid())
+  orderId String
+  order MerchandiseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant MerchandiseVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  label String
+  price Int
+  quantity Int
 }
 
 model Account {
@@ -111,6 +154,12 @@ model VerificationToken {
 }
 
 model Event {
+  registrationSlug String? @unique
+  registrationDeadline DateTime?
+  capacity Int?
+  registrationTerms String?
+  registrationCategories String[] @default([])
+  registrations EventRegistration[]
   id          String        @id @default(cuid())
   title       String
   description String?
@@ -121,6 +170,22 @@ model Event {
   status      EventStatus   @default(UPCOMING)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+}
+
+model EventRegistration {
+  id String @id @default(cuid())
+  eventId String
+  event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  name String
+  email String
+  phone String
+  category String
+  community String
+  notes String
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, email])
+  @@unique([eventId, phone])
 }
 
 model Video {
@@ -208,4 +273,12 @@ model NewsletterSubscription {
   id           String   @id @default(cuid())
   contact      String   @unique // Email or WhatsApp (+62...)
   subscribedAt DateTime @default(now())
+}
+
+model LiturgicalGuide {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

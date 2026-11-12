@@ -1,11 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { severityLabels, violationStatus } from "@/lib/violations";
 
 export interface ViolationItem {
   id: string;
   points: number;
   reason: string;
+  severity: string;
+  followUp: string | null;
+  status: string;
   date: string;
   user: {
     id: string;
@@ -37,6 +41,9 @@ export function AdminViolationsClient({
   const [selectedUserId, setSelectedUserId] = useState("");
   const [points, setPoints] = useState<number>(5);
   const [reason, setReason] = useState("");
+  const [severity, setSeverity] = useState("RINGAN");
+  const [followUp, setFollowUp] = useState("");
+  const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -69,6 +76,9 @@ export function AdminViolationsClient({
           userId: selectedUserId,
           points: Number(points),
           reason: reason.trim(),
+          severity,
+          followUp,
+          date,
         }),
       });
 
@@ -76,22 +86,9 @@ export function AdminViolationsClient({
 
       if (res.ok) {
         const targetMember = members.find((m) => m.id === selectedUserId);
-        const newRecord: ViolationItem = {
-          id: data.violation.id,
-          points: Number(points),
-          reason: reason.trim(),
-          date: new Date().toISOString(),
-          user: {
-            id: selectedUserId,
-            name: targetMember?.name || "Anggota",
-            email: targetMember?.email || "",
-            memberId: targetMember?.memberId || null,
-            violationPoints: (targetMember?.violationPoints || 0) + Number(points),
-          },
-        };
-
-        setViolations([newRecord, ...violations]);
+        setViolations((previous) => [data.violation, ...previous]);
         setReason("");
+        setFollowUp("");
         setMessage({
           type: "success",
           text: `Poin pelanggaran (+${points}) berhasil dicatat untuk ${targetMember?.name || "anggota"}.`,
@@ -105,6 +102,24 @@ export function AdminViolationsClient({
       setLoading(false);
     }
   };
+
+  async function changeStatus(id: string, status: string) {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/violations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status }),
+      });
+      if (!response.ok) throw new Error();
+      setViolations((previous) => previous.map((item) => item.id === id ? { ...item, status } : item));
+      setMessage({ type: "success", text: "Status diperbarui." });
+    } catch {
+      setMessage({ type: "error", text: "Status gagal diperbarui." });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const handleDelete = async (violationId: string) => {
     if (!confirm("Apakah Anda yakin ingin membatalkan/menghapus catatan pelanggaran ini?")) {
@@ -240,6 +255,13 @@ export function AdminViolationsClient({
             </div>
           </div>
 
+          <div className="smi-form grid gap-4 sm:grid-cols-2">
+            <label>Tanggal kejadian<input type="date" required value={date} onChange={(event) => setDate(event.target.value)} /></label>
+            <label>Tingkat keparahan<select value={severity} onChange={(event) => setSeverity(event.target.value)}>
+              {Object.entries(severityLabels).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
+            </select></label>
+            <label className="sm:col-span-2">Tindak lanjut<textarea required minLength={3} maxLength={2000} value={followUp} onChange={(event) => setFollowUp(event.target.value)} /></label>
+          </div>
           <button
             type="submit"
             disabled={loading}
@@ -297,8 +319,13 @@ export function AdminViolationsClient({
                         +{v.points} Poin
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-on-surface text-sm max-w-xs truncate">
-                      {v.reason}
+                    <td className="py-3.5 px-4 text-on-surface text-sm max-w-xs">
+                      <span className={severityLabels[v.severity]?.color + " rounded px-2 py-1"}>{severityLabels[v.severity]?.label}</span>
+                      <p className="mt-2">{v.reason}</p>
+                      {v.followUp && <p>Tindak lanjut: {v.followUp}</p>}
+                      <select aria-label={"Status " + v.reason} value={v.status} disabled={loading} onChange={(event) => changeStatus(v.id, event.target.value)}>
+                        {Object.entries(violationStatus).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+                      </select>
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button

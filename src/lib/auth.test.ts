@@ -34,6 +34,21 @@ type AuthorizeFn = (
   req: unknown
 ) => Promise<unknown>;
 
+it("blocks Google sign-in for an approved member without a membership ID", async () => {
+  vi.mocked(prisma.user.findUnique).mockResolvedValue({
+    role: "MEMBER",
+    isApproved: true,
+    memberId: null,
+  } as User);
+
+  const result = await authOptions.callbacks!.signIn!({
+    user: { id: "user-1", email: "test@smi.org" },
+    account: { provider: "google", providerAccountId: "google-1", type: "oauth" },
+  });
+
+  expect(result).toBe("/login?error=PendingApproval");
+});
+
 describe("NextAuth Credentials authorize provider", () => {
   const credentialsProvider = authOptions.providers.find(
     (p) => p.id === "credentials"
@@ -95,7 +110,7 @@ describe("NextAuth Credentials authorize provider", () => {
     ).rejects.toThrow("Email atau password salah");
   });
 
-  it("should return user object if credentials and password match", async () => {
+  it("rejects a member awaiting approval even when the password matches", async () => {
     if (!credentialsProvider || !("options" in credentialsProvider)) {
       throw new Error("Credentials provider options not found");
     }
@@ -117,7 +132,7 @@ describe("NextAuth Credentials authorize provider", () => {
 
     await expect(
       authorize({ email: "test@smi.org", password: "correctpassword" }, {})
-    ).rejects.toThrow("Akun Anda belum disetujui (di-ACC) oleh Admin");
+    ).rejects.toThrow("belum disetujui");
   });
 
   it("should return user object if credentials match and user is approved", async () => {
@@ -135,6 +150,7 @@ describe("NextAuth Credentials authorize provider", () => {
       role: "MEMBER",
       image: "avatar.jpg",
       isApproved: true,
+      memberId: "SMI-001",
     } as unknown as User;
 
     vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser);
