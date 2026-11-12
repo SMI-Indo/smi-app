@@ -6,6 +6,10 @@ import { MembershipInterface, UserProfile } from "@/components/membership/Member
 
 export const revalidate = 0; // Membutuhkan data profil real-time
 
+function isCardExpired(validUntil: Date | null) {
+  return validUntil !== null && validUntil.getTime() < Date.now();
+}
+
 export default async function MembershipPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -25,18 +29,14 @@ export default async function MembershipPage() {
       },
     });
 
-    if (!user) {
-      redirect("/login");
-    }
-
-    profile = {
+    if (user) profile = {
       name: user.name || "Anggota SMI",
       nickname: user.nickname || "Anggota",
       email: user.email,
       image: user.image,
       parish: user.parish || "Komunitas Daring",
       rank: user.rank || "Mula",
-      memberId: user.memberId || "Belum Terdaftar",
+      memberId: user.memberId,
       coins: user.coins,
       attendanceCount: user.attendanceCount,
       violationPoints: user.violationPoints || 0,
@@ -46,13 +46,18 @@ export default async function MembershipPage() {
         reason: v.reason,
         date: v.date.toISOString(),
       })),
-      cardValidUntil: user.cardValidUntil?.toISOString() || new Date().toISOString(),
+      cardValidUntil: user.cardValidUntil?.toISOString() || null,
+      joinedAt: user.createdAt.toISOString(),
+      isApproved: user.isApproved,
+      cardExpired: isCardExpired(user.cardValidUntil),
     };
   } catch {
     hasDbError = true;
   }
 
-  if (hasDbError || !profile) {
+  if (!hasDbError && !profile) redirect("/login");
+
+  if (!profile) {
     return (
       <main className="min-h-screen bg-background py-12">
         <div className="max-w-6xl mx-auto px-4 text-center space-y-4">

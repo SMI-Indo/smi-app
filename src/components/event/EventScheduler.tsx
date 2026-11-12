@@ -20,7 +20,7 @@ const subscribeFormSchema = z.object({
 type SubscribeValues = z.infer<typeof subscribeFormSchema>;
 
 export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
-  const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "ACARA">("ALL");
+  const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA">("ALL");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ success: boolean; text: string } | null>(null);
 
@@ -68,6 +68,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
           { id: "ALL" as const, label: "Semua Jadwal" },
           { id: "WEBINAR" as const, label: "Webinar Daring" },
           { id: "TEMU_ONLINE" as const, label: "Temu Virtual" },
+          { id: "WORKSHOP" as const, label: "Workshop" },
           { id: "ACARA" as const, label: "Acara Komunitas" },
         ].map((tab) => (
           <button
@@ -136,15 +137,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
           );
         })}
 
-        {/* Dashed Placeholder Card */}
-        <div className="p-6 rounded-2xl border-2 border-dashed border-outline flex flex-col items-center justify-center text-center h-48 bg-surface-container-low hover:bg-surface-container transition-colors cursor-pointer card-glow">
-          <span className="material-symbols-outlined text-3xl text-primary animate-bounce">
-            arrow_circle_down
-          </span>
-          <span className="font-label-lg text-primary text-xs mt-2">
-            TAMPILKAN JADWAL LAINNYA
-          </span>
-        </div>
+        {filteredEvents.length === 0 && <p className="text-on-surface-variant">Belum ada jadwal untuk kategori ini.</p>}
       </div>
 
       {/* Newsletter Subscription CTA Section */}

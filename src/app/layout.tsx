@@ -1,23 +1,8 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Work_Sans } from "next/font/google";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
-const workSans = Work_Sans({
-  variable: "--font-work-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -48,10 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="id"
-      className={`${plusJakartaSans.variable} ${workSans.variable}`}
-    >
+    <html lang="id">
       <body className="bg-background text-on-background font-sans antialiased min-h-screen flex flex-col">
         <Providers>
           <Navbar />

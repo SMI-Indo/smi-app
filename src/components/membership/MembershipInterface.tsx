@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import Image from "next/image";
-import { QrCodeSvg } from "./QrCodeSvg";
+import { QRCodeSVG } from "qrcode.react";
 
 export interface UserViolationRecord {
   id: string;
@@ -19,12 +19,15 @@ export interface UserProfile {
   image: string | null;
   parish: string;
   rank: string;
-  memberId: string;
+  memberId: string | null;
   coins: number;
   attendanceCount: number;
   violationPoints: number;
   violations: UserViolationRecord[];
-  cardValidUntil: string;
+  cardValidUntil: string | null;
+  joinedAt: string;
+  isApproved: boolean;
+  cardExpired: boolean;
 }
 
 export function MembershipInterface({ profile }: { profile: UserProfile }) {
@@ -56,11 +59,15 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
     }
   };
 
-  const formattedDate = new Date(profile.cardValidUntil).toLocaleDateString("id-ID", {
+  const formattedDate = profile.cardValidUntil ? new Date(profile.cardValidUntil).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric",
+  }) : "Belum ditentukan";
+  const joinedDate = new Date(profile.joinedAt).toLocaleDateString("id-ID", {
+    day: "numeric", month: "long", year: "numeric",
   });
+  const memberStatus = !profile.isApproved ? "Menunggu persetujuan" : profile.cardExpired ? "Masa berlaku habis" : "Aktif";
 
   const getDisciplineStatus = (points: number) => {
     if (points === 0) {
@@ -135,7 +142,7 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
                     {profile.name[0]}
                   </div>
                 )}
-                <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-green-600 border-2 border-[#fdb242] flex items-center justify-center" title="Aktif" />
+                <span className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${memberStatus === "Aktif" ? "bg-green-600" : "bg-amber-600"}`} title={memberStatus} />
               </div>
               <div className="min-w-0">
                 <h4 className="font-headline-md text-lg text-on-surface font-bold truncate leading-snug">
@@ -145,8 +152,9 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
                   {profile.rank} &bull; {profile.parish}
                 </p>
                 <p className="font-label-lg text-xs font-mono text-primary font-bold mt-1">
-                  ID: {profile.memberId}
+                  ID: {profile.memberId || "Belum tersedia"}
                 </p>
+                <p className="text-[10px] font-semibold">{memberStatus}</p>
               </div>
             </div>
 
@@ -155,15 +163,14 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
               <div>
                 <p className="text-[8px] text-on-surface-variant font-mono uppercase">Masa Berlaku</p>
                 <p className="text-[10px] text-on-surface font-bold font-mono">{formattedDate}</p>
+                <p className="text-[9px] text-on-surface">Bergabung: {joinedDate}</p>
               </div>
               {/* Barcode QR Verifikasi */}
-              <div className="w-12 h-12 bg-white p-1 rounded-lg border border-outline/20 flex items-center justify-center overflow-hidden">
-                <QrCodeSvg
-                  value={`https://smi.org/member/${profile.memberId}`}
-                  size={42}
-                  className="w-full h-full"
-                />
-              </div>
+              {profile.memberId ? (
+                <div className="w-14 h-14 bg-white p-1 rounded-lg border border-outline/20 flex items-center justify-center">
+                  <QRCodeSVG value={profile.memberId} size={48} marginSize={2} aria-label={`Kode anggota ${profile.memberId}`} />
+                </div>
+              ) : <span className="text-[10px]">ID belum tersedia</span>}
             </div>
           </div>
 
