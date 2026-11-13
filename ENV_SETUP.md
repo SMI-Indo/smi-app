@@ -139,3 +139,7 @@ untuk mengirim email. Jika keduanya belum diisi, transaksi tetap tersimpan dan
 server mencatat jenis notifikasi yang dilewati tanpa mencatat data penerima.
 Kuis Liturgi tersembunyi secara default. Untuk menampilkannya kembali, atur
 `ENABLE_LITURGY_QUIZ=true` pada environment yang diinginkan dan redeploy.
+Untuk alamat pendaftaran `https://daftar.<domain>/<slug>`, tambahkan subdomain
+ke proyek Vercel, pasang DNS sesuai instruksi Vercel, lalu isi
+`REGISTRATION_HOST=daftar.<domain>` (tanpa protokol atau path) dan redeploy.
+Alamat `/daftar/<slug>` dan `/daftar-<slug>` tetap berlaku.

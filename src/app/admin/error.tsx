@@ -23,7 +23,7 @@ export default function AdminError({
         Terjadi Kesalahan di Portal Admin
       </h2>
       <p className="font-body-md text-on-surface-variant text-xs sm:text-sm mb-6">
-        {error.message || "Gagal memuat data dari server. Silakan coba kembali."}
+        Data Admin gagal dimuat. Coba muat ulang halaman.
       </p>
 
       <button

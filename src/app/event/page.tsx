@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { EventScheduler } from "@/components/event/EventScheduler";
 import { Event as PrismaEvent } from "@prisma/client";
+import { registrationOrigin } from "@/lib/registrationLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function EventPage() {
 
       {/* Scheduler Interactive area */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        {unavailable ? <p role="alert">Jadwal belum bisa dimuat. Coba muat ulang halaman.</p> : <EventScheduler initialEvents={events} />}
+        {unavailable ? <p role="alert">Jadwal belum bisa dimuat. Coba muat ulang halaman.</p> : <EventScheduler initialEvents={events} registrationBase={registrationOrigin()} />}
       </section>
     </main>
   );

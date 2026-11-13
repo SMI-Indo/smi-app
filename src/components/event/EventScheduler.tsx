@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { registrationHref } from "@/lib/registrationLinks";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -20,7 +21,7 @@ const subscribeFormSchema = z.object({
 
 type SubscribeValues = z.infer<typeof subscribeFormSchema>;
 
-export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
+export function EventScheduler({ initialEvents, registrationBase }: { initialEvents: Event[]; registrationBase?: string }) {
   const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA">("ALL");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ success: boolean; text: string } | null>(null);
@@ -136,7 +137,7 @@ export function EventScheduler({ initialEvents }: { initialEvents: Event[] }) {
               </div>
               {!isCompleted && evt.registrationSlug && (
                 <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
-                  href={"/daftar/" + evt.registrationSlug}>Lihat pendaftaran</Link>
+                  href={registrationHref(evt.registrationSlug, registrationBase)}>Lihat pendaftaran</Link>
               )}
             </div>
           );

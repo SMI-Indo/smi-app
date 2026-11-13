@@ -59,7 +59,11 @@ export function AdminSidebar({ isOpen, onClose, adminUser }: AdminSidebarProps) 
     if (link.exact) {
       return pathname === link.href;
     }
-    return pathname.startsWith(link.href);
+    return pathname === link.href || (
+      pathname.startsWith(link.href + "/") &&
+      !navLinks.some((other) => other.href.startsWith(link.href + "/") &&
+        (pathname === other.href || pathname.startsWith(other.href + "/")))
+    );
   };
 
   return (

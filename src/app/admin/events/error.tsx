@@ -23,7 +23,7 @@ export default function AdminEventsError({
         Gagal Memuat Jadwal Kegiatan
       </h2>
       <p className="font-body-md text-on-surface-variant text-xs sm:text-sm mb-6">
-        {error.message || "Terjadi kendala saat mengambil data jadwal dari basis data."}
+        Jadwal atau rekap peserta gagal dimuat. Coba lagi.
       </p>
 
       <button

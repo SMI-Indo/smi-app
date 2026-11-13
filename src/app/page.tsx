@@ -1,34 +1,21 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { AnnouncementMarquee } from "@/components/home/AnnouncementMarquee";
-import { Event as PrismaEvent } from "@prisma/client";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  let upcomingEvents: PrismaEvent[] = [];
-  let featuredVideo = null;
-
-  try {
-    // Fetch next 2 upcoming events
-    upcomingEvents = await prisma.event.findMany({
-      where: {
-        status: "UPCOMING",
-        category: { in: ["WEBINAR", "TEMU_ONLINE", "WORKSHOP", "ACARA"] },
-      },
+  const [upcomingEvents, featuredVideo] = await Promise.all([
+    prisma.event.findMany({
+      where: { status: "UPCOMING" },
+      select: { id: true, title: true, category: true, status: true, time: true },
       orderBy: { date: "asc" },
       take: 2,
-    });
-
-    // Fetch featured video
-    featuredVideo = await prisma.video.findFirst({
-      where: { isFeatured: true },
-    });
-  } catch {
-    upcomingEvents = [];
-    featuredVideo = null;
-  }
+    }).catch(() => null),
+    prisma.video.findFirst({
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    }).catch(() => undefined),
+  ]);
 
   return (
     <main className="min-h-screen bg-background">
@@ -73,9 +60,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. Announcement Marquee */}
-      <AnnouncementMarquee />
-
       {/* 3. Main Content Previews Container */}
       <section className="max-w-6xl mx-auto px-4 py-16 space-y-16">
         <div className="border-b border-outline-variant pb-8 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
@@ -97,8 +81,8 @@ export default async function HomePage() {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {upcomingEvents.length > 0 ? (
-                upcomingEvents.map((evt: PrismaEvent) => (
+              {!upcomingEvents ? <p role="alert">Jadwal gagal dimuat. Coba muat ulang halaman.</p> : upcomingEvents.length > 0 ? (
+                upcomingEvents.map((evt) => (
                   <div 
                     key={evt.id} 
                     className="p-6 rounded-2xl bg-surface-container-low border border-outline-variant card-glow flex flex-col justify-between h-48"
@@ -142,12 +126,12 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {featuredVideo ? (
+            {featuredVideo === undefined ? <p role="alert">Video gagal dimuat. Coba muat ulang halaman.</p> : featuredVideo ? (
               <div className="rounded-2xl overflow-hidden border border-outline-variant bg-surface-container-low card-glow flex flex-col">
                 <div className="relative aspect-video bg-neutral-800">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={featuredVideo.thumbnail || ""}
+                    src={featuredVideo.thumbnail || "/logo_smi.png"}
                     alt={featuredVideo.title}
                     className="w-full h-full object-cover opacity-80"
                   />

@@ -1,8 +1,17 @@
 import type { NextConfig } from "next";
+import { registrationOrigin } from "./src/lib/registrationLinks";
 
 const nextConfig: NextConfig = {
   async rewrites() {
-    return [{ source: "/daftar-:slug", destination: "/daftar/:slug" }];
+    const origin = registrationOrigin();
+    const host = origin ? [{ type: "host" as const, value: new URL(origin).hostname.replaceAll(".", "\\.") }] : null;
+    return {
+      beforeFiles: host ? [{ source: "/", has: host, destination: "/daftar" }] : [],
+      afterFiles: [
+        ...(host ? [{ source: "/:slug([a-z0-9]+(?:-[a-z0-9]+)*)", has: host, destination: "/daftar/:slug" }] : []),
+        { source: "/daftar-:slug", destination: "/daftar/:slug" },
+      ],
+    };
   },
   images: {
     remotePatterns: [
