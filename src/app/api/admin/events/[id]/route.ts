@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
@@ -74,6 +75,9 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: "Jadwal kegiatan berhasil dihapus." }, { status: 200 });
   } catch (error) {
     console.error("Error deleting event:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return NextResponse.json({ error: "Jadwal ini sudah memiliki peserta. Ubah statusnya menjadi selesai untuk mempertahankan rekap." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Gagal menghapus jadwal event" }, { status: 500 });
   }
 }

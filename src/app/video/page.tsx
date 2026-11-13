@@ -3,17 +3,17 @@ import { VideoGallery } from "@/components/video/VideoGallery";
 import Image from "next/image";
 import { Video } from "@prisma/client";
 
-export const revalidate = 60; // Cache cache selama 60 detik
+export const dynamic = "force-dynamic";
 
 export default async function VideoPage() {
-  let videos: Video[] = [];
+  let videos: Video[] | null = null;
   try {
     videos = await prisma.video.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
     });
   } catch {
-    videos = [];
+    videos = null;
   }
 
   return (
@@ -38,7 +38,9 @@ export default async function VideoPage() {
         </div>
 
         {/* Dynamic Video Tabs & Bento Layout */}
-        <VideoGallery initialVideos={videos} />
+        {videos ? <VideoGallery initialVideos={videos} /> : (
+          <p role="alert">Galeri gagal dimuat. Coba muat ulang halaman.</p>
+        )}
       </div>
     </main>
   );
