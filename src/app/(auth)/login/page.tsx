@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 const loginSchema = z.object({
@@ -16,9 +15,11 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+const subscribeToLocation = () => () => {};
+const getLocationSearch = () => window.location.search;
+const getServerSearch = () => "";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -51,15 +52,18 @@ export default function LoginPage() {
         redirect: false,
       });
 
-      if (res?.error) {
-        if (res.error.includes("belum disetujui") || res.error.includes("di-ACC")) {
+      if (!res?.ok || res.error) {
+        if (res?.error?.includes("belum disetujui") || res?.error?.includes("di-ACC")) {
           setApprovalNotice(true);
         } else {
           setAuthError("Email atau kata sandi salah. Silakan coba lagi.");
         }
       } else {
-        router.push("/membership");
-        router.refresh();
+        const callback = new URLSearchParams(window.location.search).get("callbackUrl");
+        const destination = new URL("/login/continue", window.location.origin);
+        if (callback) destination.searchParams.set("callbackUrl", callback);
+        window.location.assign(destination);
+        return;
       }
     } catch {
       setAuthError("Terjadi kesalahan sistem. Silakan coba lagi.");
@@ -67,6 +71,9 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const search = useSyncExternalStore(subscribeToLocation, getLocationSearch, getServerSearch);
+  const deniedAdmin = new URLSearchParams(search).get("error") === "AdminAccessRequired";
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -88,6 +95,7 @@ export default function LoginPage() {
           <p className="font-body-md text-on-surface-variant">Sahabat Misdinar Indonesia</p>
         </div>
 
+        {deniedAdmin && <p role="status">Masuk dengan akun yang memiliki akses Admin di lingkungan ini.</p>}
         {approvalNotice && (
           <div className="p-4 text-xs md:text-sm rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 font-body-md space-y-1.5 text-center shadow-sm">
             <div className="flex items-center justify-center gap-1.5 text-amber-800 font-bold">

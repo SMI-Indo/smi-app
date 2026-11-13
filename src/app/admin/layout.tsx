@@ -10,7 +10,7 @@ export default async function AdminLayout({
   const auth = await checkAdminSession();
 
   if (!auth) {
-    redirect("/");
+    redirect("/login?error=AdminAccessRequired");
   }
 
   const adminUser = {

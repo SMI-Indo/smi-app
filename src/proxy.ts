@@ -8,24 +8,14 @@ export default withAuth(
 
     // Proteksi khusus rute admin: hanya untuk role ADMIN
     if (pathname.startsWith("/admin") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/login?error=AdminAccessRequired", req.url));
     }
 
     return NextResponse.next();
   },
   {
     callbacks: {
-      authorized: ({ token, req }) => {
-        const pathname = req.nextUrl.pathname;
-
-        // Admin route: wajib role ADMIN
-        if (pathname.startsWith("/admin")) {
-          return token?.role === "ADMIN";
-        }
-
-        // Member routes: wajib login
-        return !!token;
-      },
+      authorized: ({ token }) => !!token,
     },
     pages: {
       signIn: "/login",
