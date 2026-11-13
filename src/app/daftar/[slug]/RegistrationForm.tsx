@@ -11,8 +11,9 @@ export function RegistrationForm({ slug, categories }: { slug: string; categorie
     {!result.emailSent && <p>Email belum terkirim. Simpan kode ini sebagai bukti.</p>}
   </section>;
   return <form action={action} className="smi-form space-y-4">
+    <p>Anda bisa mendaftar tanpa akun SMI. Gunakan email aktif untuk menerima konfirmasi.</p>
     <label>Nama lengkap<input name="name" required maxLength={120} /></label>
-    <label>Email<input name="email" type="email" required maxLength={254} /></label>
+    <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
     <label>WhatsApp (08 atau +62)<input name="phone" type="tel" required /></label>
     {categories.length > 0 && <label>Cabang lomba<select name="category" defaultValue="" required>
       <option value="" disabled>Pilih cabang lomba</option>

@@ -55,6 +55,7 @@ export default async function AdminOverviewPage() {
     }));
   } catch (error) {
     console.error("Error loading admin overview page:", error);
+    return <p role="alert">Ringkasan Admin gagal dimuat. Coba muat ulang halaman.</p>;
   }
 
   return <AdminOverviewClient initialStats={stats} initialPending={pending} />;
