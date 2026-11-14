@@ -159,6 +159,7 @@ model Event {
   capacity Int?
   registrationTerms String?
   registrationCategories String[] @default([])
+  registrationFields Json @default("[]")
   registrations EventRegistration[]
   id          String        @id @default(cuid())
   title       String
@@ -178,10 +179,11 @@ model EventRegistration {
   event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
   name String
   email String
-  phone String
+  phone String?
   category String
   community String
   notes String
+  customAnswers Json @default("[]")
   createdAt DateTime @default(now())
 
   @@unique([eventId, email])
