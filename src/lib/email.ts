@@ -1,6 +1,6 @@
 const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
-export async function notifyByEmail(to: string, kind: "registration" | "violation" | "order", subject: string, lines: string[]) {
+export async function notifyByEmail(to: string, kind: "registration" | "violation" | "order" | "participant", subject: string, lines: string[]) {
   const token = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!token || !from) {

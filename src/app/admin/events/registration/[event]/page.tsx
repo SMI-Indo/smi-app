@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "../SettingsForm";
+import { ParticipantControls } from "../ParticipantControls";
 import { answersSchema, fieldsSchema, isWebLink } from "@/lib/registrationFields";
 import { registrationHref, registrationOrigin } from "@/lib/registrationLinks";
 import Link from "next/link";
@@ -80,6 +81,7 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
                     </div>
                   ))}
                 </dl>
+                <ParticipantControls eventId={event.id} id={item.id} name={item.name} email={item.email} />
               </li>
             );
           })}
