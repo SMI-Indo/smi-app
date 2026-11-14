@@ -12,6 +12,11 @@ export function RegistrationForm({ slug, categories, fields }: { slug: string; c
       Kode registrasi
       <strong className="mt-1 block wrap-anywhere text-lg text-primary">{result.code}</strong>
     </p>
+    {result.submittedAt && <p className="text-sm">
+      Waktu daftar <time dateTime={result.submittedAt}>{new Intl.DateTimeFormat("id-ID", {
+        dateStyle: "long", timeStyle: "medium", timeZone: "Asia/Jakarta",
+      }).format(new Date(result.submittedAt))} WIB</time>
+    </p>}
     <p className="text-sm text-on-surface-variant">
       {result.emailSent ? "Konfirmasi dikirim ke email Anda." : "Email belum terkirim. Simpan kode ini sebagai bukti."}
     </p>

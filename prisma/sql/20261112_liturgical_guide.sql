@@ -6,3 +6,4 @@ CREATE TABLE "LiturgicalGuide" (
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "LiturgicalGuide_pkey" PRIMARY KEY ("id")
 );
+ALTER TABLE "LiturgicalGuide" ENABLE ROW LEVEL SECURITY;

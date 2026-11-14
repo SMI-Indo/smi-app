@@ -125,8 +125,19 @@ Beritahu developer bahwa file `.env.local` sudah siap diisi agar pengembangan ko
 
 ## Pendaftaran acara, panduan, pelanggaran, dan merchandise
 
-Untuk database yang sudah menggunakan skema lama, terapkan dua skrip SQL di
-`prisma/sql` sebelum menjalankan versi baru. Untuk database lokal baru, jalankan
+Untuk database yang masih menggunakan skema lama, periksa tabel dan kolom yang
+sudah ada. Terapkan skrip yang masih diperlukan dengan urutan berikut sebelum
+menjalankan kode baru di `master`.
+
+1. `prisma/sql/20261112_liturgical_guide.sql`
+2. `prisma/sql/20261112_registrations_violations_merchandise.sql`
+3. `prisma/sql/20261114_registration_fields.sql`
+
+Uji urutan ini pada database uji dengan skema awal yang sama. Skrip hanya
+mengubah struktur dan tidak menyalin data preview. Setelah penerbitan,
+buat atau konfigurasikan pendaftaran pada kegiatan produksi lewat portal admin.
+
+Untuk database lokal baru, jalankan
 `npx prisma db push` dengan URL database lokal dan `npx prisma generate`.
 
 Pengurus dapat menerbitkan panduan, menambahkan varian merchandise, dan membuka

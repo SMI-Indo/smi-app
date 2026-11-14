@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { notifyByEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
-import { fieldsSchema, readAnswers, remainingSlots } from "@/lib/registrationFields";
+import { fieldsSchema, readAnswers, registrationWindowOpen, remainingSlots } from "@/lib/registrationFields";
 
 const input = z.object({
   name: z.string().trim().min(2).max(120),
@@ -13,7 +13,7 @@ const input = z.object({
   community: z.string().trim().min(2).max(120),
 });
 
-export type RegistrationResult = { error?: string; code?: string; emailSent?: boolean };
+export type RegistrationResult = { error?: string; code?: string; emailSent?: boolean; submittedAt?: string };
 
 export async function register(slug: string, _: RegistrationResult, form: FormData): Promise<RegistrationResult> {
   const parsed = input.safeParse(Object.fromEntries(form));
@@ -21,7 +21,7 @@ export async function register(slug: string, _: RegistrationResult, form: FormDa
   try {
     const result = await prisma.$transaction(async (tx) => {
       const event = await tx.event.findUnique({ where: { registrationSlug: slug }, include: { _count: { select: { registrations: true } } } });
-      if (!event || event.status !== "UPCOMING" || !event.registrationDeadline || event.registrationDeadline <= new Date()) {
+      if (!event || !registrationWindowOpen(event.status, event.registrationDeadline)) {
         return { error: "Pendaftaran telah ditutup atau belum dibuka." } as const;
       }
       if (remainingSlots(event.capacity, event._count.registrations) === 0) return { error: "Kuota acara sudah penuh." } as const;
@@ -43,7 +43,7 @@ export async function register(slug: string, _: RegistrationResult, form: FormDa
     const emailSent = await notifyByEmail(entry.email, "registration", "Konfirmasi pendaftaran SMI", [
       event.title, "Kode registrasi: " + entry.id, event.date.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta" }) + " · " + event.time, event.location,
     ]);
-    return { code: entry.id, emailSent };
+    return { code: entry.id, emailSent, submittedAt: entry.createdAt.toISOString() };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") return { error: "Email sudah terdaftar pada acara ini." };
