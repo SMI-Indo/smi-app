@@ -6,21 +6,49 @@ import { registrationHref, registrationOrigin } from "@/lib/registrationLinks";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { adminRegistrationHref, suggestRegistrationSlug } from "../paths";
+import { participantOrder, participantPage, participantPageSize, participantSearch, participantSearchLimit, participantWhere, registrationEventWhere } from "../participants";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventRegistrationSettingsPage({ params, searchParams }: {
   params: Promise<{ event: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; q?: string | string[]; page?: string | string[] }>;
 }) {
   const { event: route } = await params;
-  const { saved } = await searchParams;
+  const { saved, q, page: requestedPage } = await searchParams;
+  const query = participantSearch(q);
+  const filters = new URLSearchParams();
+  if (query) filters.set("q", query);
+  if (requestedPage) filters.set("page", Array.isArray(requestedPage) ? requestedPage[0] : requestedPage);
   const event = await prisma.event.findUnique({
-    where: route.startsWith("~") ? { id: route.slice(1) } : { registrationSlug: route },
-    include: { registrations: { orderBy: { createdAt: "desc" } } },
+    where: registrationEventWhere(route),
+    select: {
+      id: true, registrationSlug: true, title: true, capacity: true, registrationDeadline: true,
+      registrationTerms: true, registrationCategories: true, registrationFields: true,
+      _count: { select: { registrations: true } },
+    },
   });
   if (!event) notFound();
-  if (route.startsWith("~") && event.registrationSlug) redirect(adminRegistrationHref(event.id, event.registrationSlug));
+  const adminHref = adminRegistrationHref(event.id, event.registrationSlug);
+  if (route.startsWith("~") && event.registrationSlug) redirect(adminHref + (filters.size ? "?" + filters : ""));
+
+  const where = participantWhere(event.id, query);
+  const { count, paging, participants } = await prisma.$transaction(async (tx) => {
+    const count = await tx.eventRegistration.count({ where });
+    const paging = participantPage(requestedPage, count);
+    const participants = count === 0 ? [] : await tx.eventRegistration.findMany({
+      where, orderBy: participantOrder, skip: paging.skip, take: participantPageSize,
+      select: { id: true, name: true, email: true, community: true, category: true, phone: true, notes: true, customAnswers: true },
+    });
+    return { count, paging, participants };
+  }, { isolationLevel: "RepeatableRead" });
+
+  function pageHref(page: number) {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (page > 1) params.set("page", String(page));
+    return adminHref + (params.size ? "?" + params : "") + "#rekap-peserta";
+  }
 
   const origin = registrationOrigin();
   const fields = fieldsSchema.safeParse(event.registrationFields);
@@ -33,7 +61,7 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
       </Link>
       <h1 className="mt-2 wrap-anywhere text-3xl font-bold leading-tight text-on-surface sm:text-4xl">{event.title}</h1>
       <p className="mt-2 text-sm text-on-surface-variant">
-        {event.registrations.length} peserta terdaftar · {event.capacity === null ? "Tanpa batas kuota" : `Kuota ${event.capacity}`}
+        {event._count.registrations} peserta terdaftar · {event.capacity === null ? "Tanpa batas kuota" : `Kuota ${event.capacity}`}
       </p>
       {publicHref ? (
         <Link href={publicHref} target="_blank" rel="noopener noreferrer"
@@ -52,11 +80,33 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
         fields: fields.data,
       }} /> : <p role="alert" className="text-sm text-error">Konfigurasi kolom gagal dimuat. Hubungi pengelola sistem.</p>}
     </section>
-    <details className="min-w-0 max-w-3xl rounded-xl border border-outline-variant bg-surface-container-lowest">
-      <summary className="min-h-11 cursor-pointer rounded-xl px-4 py-3 text-lg font-semibold hover:text-primary sm:px-6">Rekap peserta</summary>
-      {event.registrations.length === 0 ? <p className="border-t border-outline-variant px-4 py-4 text-sm text-on-surface-variant sm:px-6">Belum ada peserta.</p> : (
+    <section id="rekap-peserta" aria-labelledby="recap-title" className="min-w-0 max-w-3xl scroll-mt-24 rounded-xl border border-outline-variant bg-surface-container-lowest">
+      <header className="space-y-4 px-4 py-4 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="recap-title" className="text-lg font-semibold">Rekap peserta</h2>
+          <a href={adminHref + "/export"} download
+            className="inline-flex min-h-11 items-center rounded-lg border border-outline px-3 text-sm font-semibold text-primary hover:bg-surface">
+            Ekspor Excel
+          </a>
+        </div>
+        <form action={adminHref + "#rekap-peserta"} className="smi-form registration-form">
+          <label htmlFor="participant-search">Cari peserta</label>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input key={query} id="participant-search" type="search" name="q" defaultValue={query} maxLength={participantSearchLimit}
+              placeholder="Nama, email, paroki, cabang, atau kode" className="!mt-0 min-w-40 flex-1" />
+            <button type="submit" className="min-h-11 cursor-pointer rounded-lg border border-outline px-3 text-sm font-semibold text-primary hover:bg-surface">Cari</button>
+            {query && <Link href={adminHref + "#rekap-peserta"} className="inline-flex min-h-11 items-center px-2 text-sm text-primary underline">Hapus pencarian</Link>}
+          </div>
+        </form>
+        {count > 0 && <p className="text-sm text-on-surface-variant">
+          Menampilkan {paging.skip + 1}–{paging.skip + participants.length} dari {count} {query ? "hasil pencarian" : "peserta"}
+        </p>}
+      </header>
+      {participants.length === 0 ? <p className="border-t border-outline-variant px-4 py-4 text-sm text-on-surface-variant sm:px-6">
+        {query ? "Peserta tidak ditemukan. Coba kata pencarian lain." : "Belum ada peserta."}
+      </p> : (
         <ul className="divide-y divide-outline-variant border-t border-outline-variant">
-          {event.registrations.map((item) => {
+          {participants.map((item) => {
             const answers = answersSchema.safeParse(item.customAnswers);
             return (
               <li key={item.id} className="grid gap-4 px-4 py-5 wrap-anywhere sm:grid-cols-2 sm:px-6">
@@ -87,6 +137,15 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
           })}
         </ul>
       )}
-    </details>
+      {paging.pages > 1 && (
+        <nav aria-label="Halaman rekap peserta" className="flex flex-wrap items-center justify-between gap-x-4 border-t border-outline-variant px-4 py-2 text-sm sm:px-6">
+          <p>Halaman {paging.page} dari {paging.pages}</p>
+          <div className="flex flex-wrap gap-x-4">
+            {paging.page > 1 && <Link href={pageHref(paging.page - 1)} prefetch={false} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline">Sebelumnya</Link>}
+            {paging.page < paging.pages && <Link href={pageHref(paging.page + 1)} prefetch={false} className="inline-flex min-h-11 items-center font-semibold text-primary hover:underline">Berikutnya</Link>}
+          </div>
+        </nav>
+      )}
+    </section>
   </section>;
 }
