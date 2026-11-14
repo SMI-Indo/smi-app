@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "../SettingsForm";
 import { ParticipantControls } from "../ParticipantControls";
+import { RegistrationQr } from "../RegistrationQr";
 import { answersSchema, fieldsSchema, isWebLink } from "@/lib/registrationFields";
 import { registrationHref, registrationOrigin } from "@/lib/registrationLinks";
 import Link from "next/link";
@@ -69,6 +70,7 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
           Buka formulir publik <span aria-hidden="true">↗</span><span className="sr-only"> (tab baru)</span>
         </Link>
       ) : <p className="mt-3 text-sm text-on-surface-variant">Simpan pengaturan untuk membuat tautan pendaftaran.</p>}
+      {publicHref && <RegistrationQr href={publicHref} title={event.title} />}
     </header>
     {saved === "1" && <p role="status" className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm font-medium">Pengaturan disimpan.</p>}
     <section aria-labelledby="registration-settings-title" className="min-w-0 max-w-3xl rounded-xl border border-outline-variant bg-surface-container-lowest p-4 sm:p-6">
