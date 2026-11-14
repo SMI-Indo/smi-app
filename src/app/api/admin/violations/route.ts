@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import * as z from "zod";
+import { EvidenceError, validateEvidenceFiles, uploadEvidence, removeEvidence, evidenceSchemaReady, type StoredEvidence } from "@/lib/violationEvidence";
+
+const evidenceEnabled = process.env.ENABLE_VIOLATION_EVIDENCE === "true";
 import { notifyByEmail } from "@/lib/email";
 
 async function checkAdmin() {
@@ -26,6 +29,7 @@ export async function GET() {
     const violations = await prisma.violationRecord.findMany({
       orderBy: { createdAt: "desc" },
       include: {
+        ...(evidenceEnabled && { evidence: { select: { id: true, fileName: true } } }),
         user: {
           select: {
             id: true,
@@ -59,14 +63,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
   }
 
+  let uploaded: StoredEvidence[] = [];
+  let committed = false;
   try {
-    const body = await req.json();
+    let body: unknown;
+    let files: File[] = [];
+    if (req.headers.get("content-type")?.includes("multipart/form-data")) {
+      const form = await req.formData();
+      const raw = form.get("data");
+      body = typeof raw === "string" ? JSON.parse(raw) : null;
+      files = form.getAll("evidence").filter((file): file is File => typeof file !== "string" && file.size > 0);
+    } else body = await req.json();
+    if (files.length && !evidenceEnabled) return NextResponse.json({ error: "Unggah bukti belum tersedia." }, { status: 503 });
     const parsed = createViolationSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.issues[0]?.message || "Input tidak valid" }, { status: 400 });
     }
 
     const { userId, points, reason, severity, followUp, date } = parsed.data;
+
+    uploaded = await uploadEvidence(await validateEvidenceFiles(files));
 
     // Tambah record dan akumulasi poin di user secara transaksional
     const record = await prisma.$transaction(async (tx) => {
@@ -79,6 +95,7 @@ export async function POST(req: NextRequest) {
           followUp,
           date: new Date(date + "T00:00:00+07:00"),
           createdById: admin.id,
+          ...(uploaded.length && { evidence: { create: uploaded } }),
         },
       });
 
@@ -93,11 +110,16 @@ export async function POST(req: NextRequest) {
       return { ...createdRecord, user };
     });
 
+    committed = true;
+    if (uploaded.length) await prisma.evidenceCleanup.deleteMany({ where: { storagePath: { in: uploaded.map((file) => file.storagePath) } } }).catch(() => console.warn("[evidence] Journal cleanup deferred"));
     await notifyByEmail(record.user.email, "violation", "Catatan kedisiplinan baru", [
       "Ada catatan kedisiplinan yang perlu Anda tinjau.", "Buka halaman Digital ID untuk melihat rincian dan tindak lanjut.",
     ]);
-    return NextResponse.json({ success: true, violation: record }, { status: 201 });
-  } catch {
+    const evidence = evidenceEnabled ? await prisma.violationEvidence.findMany({ where: { violationId: record.id }, select: { id: true, fileName: true } }).catch(() => []) : [];
+    return NextResponse.json({ success: true, violation: { ...record, evidence } }, { status: 201 });
+  } catch (error) {
+    if (!committed) await removeEvidence(uploaded.map((file) => file.storagePath), false).catch(() => console.warn("[evidence] Cleanup needs retry"));
+    if (error instanceof EvidenceError) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ error: "Gagal mencatat poin pelanggaran" }, { status: 500 });
   }
 }
@@ -144,7 +166,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Catatan pelanggaran tidak ditemukan" }, { status: 404 });
     }
 
-    await prisma.$transaction(async (tx) => {
+    const hasEvidenceSchema = await evidenceSchemaReady();
+    const paths = await prisma.$transaction(async (tx) => {
+      const evidence = hasEvidenceSchema ? await tx.violationEvidence.findMany({ where: { violationId }, select: { storagePath: true } }) : [];
+      if (evidence.length) await tx.evidenceCleanup.createMany({ data: evidence.map((file) => ({ storagePath: file.storagePath, notBefore: new Date() })), skipDuplicates: true });
       await tx.violationRecord.delete({
         where: { id: violationId },
       });
@@ -155,8 +180,10 @@ export async function DELETE(req: NextRequest) {
           violationPoints: { decrement: existing.points },
         },
       });
+      return evidence.map((file) => file.storagePath);
     });
 
+    await removeEvidence(paths).catch(() => console.warn("[evidence] Cleanup needs retry"));
     return NextResponse.json({ success: true }, { status: 200 });
   } catch {
     return NextResponse.json({ error: "Gagal menghapus catatan pelanggaran" }, { status: 500 });

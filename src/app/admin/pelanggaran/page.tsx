@@ -8,6 +8,8 @@ import {
 export const revalidate = 0; // Data harus selalu real-time
 
 export default async function AdminPelanggaranPage() {
+  const evidenceEnabled = process.env.ENABLE_VIOLATION_EVIDENCE === "true";
+  let loadFailed = false;
   let violations: ViolationItem[] = [];
   let members: MemberOption[] = [];
 
@@ -16,6 +18,7 @@ export default async function AdminPelanggaranPage() {
       prisma.violationRecord.findMany({
         orderBy: { createdAt: "desc" },
         include: {
+          ...(evidenceEnabled && { evidence: { select: { id: true, fileName: true } } }),
           user: {
             select: {
               id: true,
@@ -49,10 +52,12 @@ export default async function AdminPelanggaranPage() {
       status: v.status,
       date: v.date.toISOString(),
       user: v.user,
+      evidence: "evidence" in v ? v.evidence as { id: string; fileName: string }[] : [],
     }));
 
     members = rawMembers;
   } catch {
+    loadFailed = true;
     violations = [];
     members = [];
   }
@@ -61,6 +66,8 @@ export default async function AdminPelanggaranPage() {
     <AdminViolationsClient
       initialViolations={violations}
       members={members}
+      evidenceEnabled={evidenceEnabled}
+      loadFailed={loadFailed}
     />
   );
 }

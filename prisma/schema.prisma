@@ -65,6 +65,7 @@ model User {
 }
 
 model ViolationRecord {
+  evidence ViolationEvidence[]
   severity String @default("RINGAN")
   followUp String?
   status String @default("OPEN")
@@ -283,4 +284,25 @@ model LiturgicalGuide {
   content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ViolationEvidence {
+  id String @id @default(cuid())
+  violationId String
+  violation ViolationRecord @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  storagePath String @unique
+  fileName String
+  contentType String
+  size Int
+  createdAt DateTime @default(now())
+
+  @@index([violationId])
+}
+
+model EvidenceCleanup {
+  storagePath String @id
+  notBefore DateTime
+  createdAt DateTime @default(now())
+
+  @@index([notBefore])
 }

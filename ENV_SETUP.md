@@ -154,3 +154,20 @@ Untuk alamat pendaftaran `https://daftar.<domain>/<slug>`, tambahkan subdomain
 ke proyek Vercel, pasang DNS sesuai instruksi Vercel, lalu isi
 `REGISTRATION_HOST=daftar.<domain>` (tanpa protokol atau path) dan redeploy.
 Alamat `/daftar/<slug>` dan `/daftar-<slug>` tetap berlaku.
+
+## Bukti pelanggaran privat (opsional, preview dahulu)
+
+Kode tersedia di `main`, tetapi fitur nonaktif secara default. Jangan aktifkan
+sebelum migrasi dan uji integrasi preview berhasil.
+
+1. Gunakan proyek preview `rjvjlwjpoqyxvlbzaozn`; jangan menjalankan migrasi pada production untuk pengujian.
+2. Jalankan `prisma/sql/20261114_private_violation_evidence.sql` setelah memeriksa skema preview. Pastikan bucket `violation-evidence` privat; skrip tidak mengubah bucket yang sudah ada.
+3. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` sebagai variabel server secara aman. Jangan beri prefix `NEXT_PUBLIC_` pada service-role key.
+4. Generate ulang Prisma Client. Uji membuat catatan, mengunggah PNG/JPEG/WebP, membuka bukti sebagai admin, serta penolakan akses anggota/tamu.
+5. Set `ENABLE_VIOLATION_EVIDENCE=true` hanya setelah langkah tersebut berhasil. Maksimal tiga gambar, masing-masing 1 MiB setelah kompresi browser, menjaga payload di bawah batas request fungsi Vercel.
+6. Unggahan dijurnal sebelum request Storage. Unggahan gagal memiliki masa tunggu satu jam sebelum pembersihan agar tidak menghapus operasi yang masih berjalan. Penghapusan catatan menjadwalkan pembersihan dalam transaksi yang sama. Endpoint admin `POST /api/admin/evidence-cleanup` memproses maksimal 100 entri yang jatuh tempo; jalankan berkala melalui sesi admin sampai tidak ada antrean. Kegagalan tetap tersimpan untuk dicoba kembali. Penjadwalan otomatis belum dikonfigurasi.
+7. Bila unggah dinonaktifkan, pembersihan tetap harus bisa dijalankan. Jangan menghapus tabel antrean sebelum bukti tidak terpakai telah dibersihkan. Akun dengan riwayat pelanggaran tidak dihapus secara berantai; nonaktifkan persetujuan untuk mempertahankan riwayat.
+
+Saat perubahan keamanan akun dirilis, sesi JWT lama perlu login ulang satu kali.
+Reset/ganti password membatalkan sesi yang memiliki fingerprint password lama;
+password dan fingerprint tidak dikirim dalam objek sesi publik.
