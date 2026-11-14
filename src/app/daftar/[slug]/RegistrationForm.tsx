@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { register, type RegistrationResult } from "./actions";
 import type { RegistrationField } from "@/lib/registrationFields";
 
-export function RegistrationForm({ slug, categories, fields }: { slug: string; categories: string[]; fields: RegistrationField[] }) {
+export function RegistrationForm({ slug, categories, fields, accountEmail }: { slug: string; categories: string[]; fields: RegistrationField[]; accountEmail?: string | null }) {
   const [result, action, pending] = useActionState<RegistrationResult, FormData>(register.bind(null, slug), {});
   if (result.code) return <section role="status" className="space-y-4">
     <h2 className="text-2xl font-semibold">Pendaftaran tersimpan</h2>
@@ -24,9 +24,12 @@ export function RegistrationForm({ slug, categories, fields }: { slug: string; c
   return <form action={action} className="smi-form registration-form space-y-5">
     <header>
       <h2 className="text-2xl font-semibold">Formulir pendaftaran</h2>
-      <p className="mt-2 text-sm text-on-surface-variant">Gunakan email aktif untuk menerima konfirmasi. Anda dapat mendaftar tanpa akun SMI.</p>
+      <p className="mt-2 text-sm text-on-surface-variant">{accountEmail ? "Konfirmasi akan dikirim ke email akun Anda." : "Gunakan email aktif untuk menerima konfirmasi. Anda dapat mendaftar tanpa akun SMI."}</p>
     </header>
-    <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>
+    {accountEmail ? <div className="border-l-2 border-primary pl-3 text-sm">
+      <p className="text-on-surface-variant">Email akun</p>
+      <p className="mt-1 break-all font-semibold">{accountEmail}</p>
+    </div> : <label>Email<input name="email" type="email" autoComplete="email" required maxLength={254} /></label>}
     <label>Nama lengkap termasuk nama baptis<input name="name" autoComplete="name" required minLength={2} maxLength={120} /></label>
     <label>Asal paroki<input name="community" required minLength={2} maxLength={120} /></label>
     {categories.length > 0 && <label>Cabang lomba<select name="category" defaultValue="" required>

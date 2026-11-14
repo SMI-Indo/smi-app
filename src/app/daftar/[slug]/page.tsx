@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RegistrationForm } from "./RegistrationForm";
 import { Countdown } from "./Countdown";
@@ -26,6 +28,16 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
   const remaining = event ? remainingSlots(event.capacity, event._count.registrations) : null;
   const fields = fieldsSchema.safeParse(event?.registrationFields);
   const open = event && registrationWindowOpen(event.status, event.registrationDeadline, now) && remaining !== 0;
+  let accountEmail: string | null | undefined;
+  let identityUnavailable = false;
+  if (open) {
+    try {
+      const session = await getServerSession(authOptions);
+      accountEmail = session?.user?.id ? session.user.email : undefined;
+    } catch {
+      identityUnavailable = true;
+    }
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-12">
@@ -74,13 +86,13 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
           </section>
         )}
         <div className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-lowest p-5 sm:p-7">
-          {event === undefined || (open && !fields.success) ? (
+          {event === undefined || (open && (!fields.success || identityUnavailable)) ? (
             <section role="alert">
               <h2 className="text-xl font-semibold">Formulir gagal dimuat</h2>
               <p className="mt-2 text-sm text-on-surface-variant">Muat ulang halaman atau hubungi pengurus.</p>
             </section>
           ) : open && fields.success ? (
-            <RegistrationForm slug={slug} categories={event.registrationCategories} fields={fields.data} />
+            <RegistrationForm slug={slug} categories={event.registrationCategories} fields={fields.data} accountEmail={accountEmail} />
           ) : (
             <section>
               <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : !event ? "Kegiatan tidak ditemukan" : event.registrationDeadline && event.registrationDeadline <= now ? "Pendaftaran sudah ditutup" : "Pendaftaran belum tersedia"}</h2>

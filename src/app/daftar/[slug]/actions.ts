@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyByEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
@@ -16,9 +18,11 @@ const input = z.object({
 export type RegistrationResult = { error?: string; code?: string; emailSent?: boolean; submittedAt?: string };
 
 export async function register(slug: string, _: RegistrationResult, form: FormData): Promise<RegistrationResult> {
-  const parsed = input.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "Periksa email, nama lengkap, dan asal paroki." };
   try {
+    const session = await getServerSession(authOptions);
+    const accountEmail = session?.user?.id ? session.user.email : undefined;
+    const parsed = input.safeParse({ ...Object.fromEntries(form), email: accountEmail || form.get("email") });
+    if (!parsed.success) return { error: "Periksa email, nama lengkap, dan asal paroki. Jika sesi berakhir, muat ulang atau masuk kembali." };
     const result = await prisma.$transaction(async (tx) => {
       const event = await tx.event.findUnique({ where: { registrationSlug: slug }, include: { _count: { select: { registrations: true } } } });
       if (!event || !registrationWindowOpen(event.status, event.registrationDeadline)) {
