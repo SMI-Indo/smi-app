@@ -6,10 +6,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
 
-export function Navbar({ showQuiz }: { showQuiz: boolean }) {
+export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; previewBetaNavbar: boolean }) {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const betaPage = pathname === "/daftar/video-natal";
+  const betaPage = previewBetaNavbar && (pathname === "/" || pathname === "/daftar/video-natal");
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
