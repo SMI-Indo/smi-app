@@ -1,5 +1,8 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { previewSessionCookie } from "@/lib/sessionCookie";
+
+const sessionToken = previewSessionCookie();
 
 export default withAuth(
   function proxy(req) {
@@ -14,6 +17,7 @@ export default withAuth(
     return NextResponse.next();
   },
   {
+    ...(sessionToken && { cookies: { sessionToken } }),
     callbacks: {
       authorized: ({ token }) => !!token,
     },

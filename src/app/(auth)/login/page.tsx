@@ -8,7 +8,7 @@ import { signIn } from "next-auth/react";
 import Image from "next/image";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Format email tidak valid" }),
+  email: z.string().trim().email({ message: "Format email tidak valid" }),
   password: z
     .string()
     .min(8, { message: "Kata sandi minimal harus 8 karakter" }),
@@ -122,6 +122,7 @@ export default function LoginPage() {
             <input
               type="email"
               {...register("email")}
+              autoComplete="username"
               disabled={isLoading}
               className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md focus:outline-none focus:border-primary transition-colors"
               placeholder="nama@email.com"
@@ -138,6 +139,7 @@ export default function LoginPage() {
               <input
                 type={showPassword ? "text" : "password"}
                 {...register("password")}
+                autoComplete="current-password"
                 disabled={isLoading}
                 className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md focus:outline-none focus:border-primary pr-12 transition-colors"
                 placeholder="••••••••"

@@ -4,8 +4,12 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { previewSessionCookie } from "./sessionCookie";
+
+const sessionToken = previewSessionCookie();
 
 export const authOptions: AuthOptions = {
+  ...(sessionToken && { cookies: { sessionToken } }),
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -35,7 +39,7 @@ export const authOptions: AuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+          where: { email: credentials.email.trim() },
         });
 
         if (!user || !user.password) {
