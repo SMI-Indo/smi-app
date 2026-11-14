@@ -168,3 +168,58 @@ body {
   border-radius: 0.5rem;
   background: var(--color-surface);
 }
+
+.registration-form :is(input:not([type="hidden"], [type="checkbox"]), select, textarea) {
+  min-width: 0;
+  min-height: 2.75rem;
+  margin-top: 0.5rem;
+  font-weight: 400;
+}
+
+.registration-form select {
+  cursor: pointer;
+}
+
+.registration-form textarea {
+  resize: vertical;
+}
+
+.registration-form .registration-check {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.registration-form input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.registration-submit {
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.registration-submit:hover:not(:disabled) {
+  background: var(--color-primary-container);
+}
+
+.registration-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.registration-form :is(input, select, textarea, button):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
