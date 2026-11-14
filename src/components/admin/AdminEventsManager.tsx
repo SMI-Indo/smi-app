@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { adminRegistrationHref, suggestRegistrationSlug } from "@/app/admin/events/registration/paths";
 
 export type EventCategory = "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA";
 export type EventStatus = "UPCOMING" | "COMPLETED";
@@ -15,6 +17,7 @@ export interface EventData {
   location: string;
   status: EventStatus;
   createdAt: string;
+  registrationSlug: string | null;
 }
 
 interface AdminEventsManagerProps {
@@ -30,6 +33,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
   // Modal form states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventData | null>(null);
+  const [registrationSlug, setRegistrationSlug] = useState("");
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
@@ -68,6 +72,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
 
   const openCreateModal = () => {
     setEditingEvent(null);
+    setRegistrationSlug("");
     setFormData({
       title: "",
       description: "",
@@ -107,7 +112,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(isEdit ? formData : { ...formData, registrationSlug }),
       });
 
       const data = await res.json();
@@ -349,7 +354,9 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
                     <span className="truncate">{item.location}</span>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-3">
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-3">
+                    <Link href={adminRegistrationHref(item.id, item.registrationSlug)}
+                      className="inline-flex min-h-11 items-center px-2 text-sm font-semibold text-primary underline">Kelola pendaftaran</Link>
                     <button
                       type="button"
                       onClick={() => openEditModal(item)}
@@ -411,6 +418,16 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm focus:border-primary focus:outline-none"
                 />
               </div>
+              {!editingEvent && <div className="smi-form space-y-2">
+                <label>Nama unik tautan pendaftaran (opsional)
+                  <input value={registrationSlug} onChange={(event) => setRegistrationSlug(event.target.value)}
+                    maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" aria-describedby="new-event-slug-help" />
+                </label>
+                <button type="button" disabled={!suggestRegistrationSlug(formData.title)}
+                  className="min-h-11 text-primary underline disabled:opacity-50"
+                  onClick={() => setRegistrationSlug(suggestRegistrationSlug(formData.title))}>Pakai judul kegiatan</button>
+                <p id="new-event-slug-help" className="text-sm">Nama ini bisa diisi nanti. Pendaftaran dibuka setelah tenggat diatur.</p>
+              </div>}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

@@ -135,7 +135,7 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
                   <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
-              {!isCompleted && evt.registrationSlug && (
+              {!isCompleted && evt.registrationSlug && evt.registrationDeadline && (
                 <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
                   href={registrationHref(evt.registrationSlug, registrationBase)}>Lihat pendaftaran</Link>
               )}

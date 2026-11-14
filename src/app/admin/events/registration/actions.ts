@@ -5,6 +5,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import { fieldsSchema } from "@/lib/registrationFields";
+import { Prisma } from "@prisma/client";
+import { redirect } from "next/navigation";
+import { adminRegistrationHref } from "./paths";
 
 const settings = z.object({
   eventId: z.string().min(1),
@@ -32,10 +35,13 @@ export async function saveRegistrationSettings(_: string, form: FormData): Promi
       registrationSlug: slug, registrationDeadline: date, capacity, registrationTerms: terms, registrationCategories,
       registrationFields: fields,
     } });
-    revalidatePath("/daftar");
-    revalidatePath("/admin/events/registration");
-    return "Pengaturan disimpan.";
-  } catch {
-    return "Pengaturan tidak dapat disimpan. Pastikan slug belum dipakai acara lain.";
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return "Nama tautan sudah dipakai kegiatan lain. Pilih nama lain.";
+    }
+    return "Pengaturan tidak dapat disimpan. Coba lagi.";
   }
+  revalidatePath("/daftar", "layout");
+  revalidatePath("/admin/events/registration", "layout");
+  redirect(adminRegistrationHref(eventId, slug) + "?saved=1");
 }

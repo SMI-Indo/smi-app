@@ -8,16 +8,20 @@ type Settings = { id: string; slug: string; deadline: string; capacity: number |
 export function SettingsForm({ event }: { event: Settings }) {
   const [message, action, pending] = useActionState(saveRegistrationSettings, "");
   const [fields, setFields] = useState(event.fields);
+  const [slug, setSlug] = useState(event.slug);
   function updateField(id: string, changes: Partial<RegistrationField>) {
     setFields((current) => current.map((field) => field.id === id ? { ...field, ...changes } : field));
   }
 
-  return <details className="border-t border-outline-variant">
+  return <details open className="border-t border-outline-variant">
     <summary className="flex min-h-11 items-center py-2 cursor-pointer font-semibold">Pengaturan formulir</summary>
     <form action={action} className="smi-form mt-4 space-y-3">
       <input type="hidden" name="eventId" value={event.id} />
       <input type="hidden" name="fields" value={JSON.stringify(fields)} />
-      <label>Slug (contoh: lombanatal)<input name="slug" defaultValue={event.slug} required maxLength={80} /></label>
+      <label>Nama unik tautan<input name="slug" value={slug} onChange={(event) => setSlug(event.target.value)}
+        required maxLength={80} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" aria-describedby={"slug-" + event.id} /></label>
+      <p id={"slug-" + event.id} className="text-sm break-all">Alamat formulir: /daftar/{slug || "nama-kegiatan"}. Gunakan huruf kecil, angka, dan tanda hubung.</p>
+      {event.slug && <p className="text-sm">Jika nama tautan berubah, bagikan alamat baru kepada peserta.</p>}
       <label>Batas pendaftaran (WIB)<input name="deadline" type="datetime-local" defaultValue={event.deadline} required /></label>
       <label>Kuota<input name="capacity" type="number" min={1} max={100000} defaultValue={event.capacity ?? undefined} aria-describedby={"capacity-" + event.id} /></label>
       <p id={"capacity-" + event.id} className="text-sm">Kosongkan jika tidak ada batas peserta.</p>

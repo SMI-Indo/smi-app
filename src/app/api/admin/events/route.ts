@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
+import { Prisma } from "@prisma/client";
 
 export const revalidate = 0;
 
@@ -30,6 +31,9 @@ const eventSchema = z.object({
   time: z.string().min(1, "Waktu kegiatan wajib diisi (contoh: 19:00 - 21:00 WIB)"),
   location: z.string().min(1, "Lokasi / Tautan kegiatan wajib diisi (contoh: Zoom Meeting)"),
   status: z.enum(["UPCOMING", "COMPLETED"]).default("UPCOMING"),
+  registrationSlug: z.string().trim().max(80)
+    .refine((slug) => !slug || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug), "Gunakan huruf kecil, angka, dan tanda hubung untuk nama tautan.")
+    .optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { title, description, category, date, time, location, status } = parsed.data;
+    const { title, description, category, date, time, location, status, registrationSlug } = parsed.data;
 
     const newEvent = await prisma.event.create({
       data: {
@@ -59,11 +63,15 @@ export async function POST(req: NextRequest) {
         time: time.trim(),
         location: location.trim(),
         status,
+        registrationSlug: registrationSlug || null,
       },
     });
 
     return NextResponse.json({ success: true, event: newEvent }, { status: 201 });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ error: "Nama tautan sudah dipakai kegiatan lain." }, { status: 409 });
+    }
     console.error("Error creating event:", error);
     return NextResponse.json({ error: "Gagal menambahkan jadwal event" }, { status: 500 });
   }

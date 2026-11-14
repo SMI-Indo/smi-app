@@ -24,6 +24,7 @@ export default async function AdminEventsPage() {
       location: e.location,
       status: e.status,
       createdAt: e.createdAt.toISOString(),
+      registrationSlug: e.registrationSlug,
     }));
   } catch (error) {
     console.error("Error loading admin events page:", error);
