@@ -9,6 +9,7 @@ import Image from "next/image";
 export function Navbar({ showQuiz }: { showQuiz: boolean }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const betaPage = pathname === "/daftar/video-natal";
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
@@ -16,7 +17,7 @@ export function Navbar({ showQuiz }: { showQuiz: boolean }) {
     { href: "/event", label: "Jadwal", icon: "calendar_month" },
     { href: "/merchandise", label: "Merchandise", icon: "storefront" },
     { href: "/video", label: "Video", icon: "play_circle" },
-    ...(showQuiz ? [{ href: "/quiz", label: "Kuis", icon: "quiz", protected: true }] : []),
+    ...(showQuiz || betaPage ? [{ href: "/quiz", label: "Kuis", icon: "quiz", protected: true }] : []),
     { href: "/coin", label: "Koin", icon: "token", protected: true },
     { href: "/membership", label: "Digital ID", icon: "badge", protected: true },
   ];
@@ -39,13 +40,19 @@ export function Navbar({ showQuiz }: { showQuiz: boolean }) {
           <span className="font-headline-md text-primary tracking-tight font-black transition-colors group-hover:text-primary-container">
             SMI
           </span>
+          {betaPage && <span className="text-xs font-semibold text-on-surface-variant">Beta</span>}
         </Link>
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
             // Hide protected links if user is not logged in
-            if (link.protected && !session) return null;
+            if (link.protected && !session && !betaPage) return null;
+            if (betaPage) return (
+              <span key={link.href} className="flex flex-col items-center px-2 py-2 text-on-surface-variant" aria-label={link.label + ", coming soon"}>
+                <span className="text-sm">{link.label}</span><span className="text-xs">Coming soon</span>
+              </span>
+            );
             const isActive = pathname === link.href;
             return (
               <Link
@@ -183,8 +190,11 @@ export function Navbar({ showQuiz }: { showQuiz: boolean }) {
           )}
 
           {navLinks
-            .filter((link) => !link.protected || !!session)
+            .filter((link) => betaPage || !link.protected || !!session)
             .map((link) => (
+              betaPage ? <div key={link.href} className="flex items-center justify-between gap-3 px-4 py-3 text-on-surface-variant">
+                <span>{link.label}</span><span className="text-xs">Coming soon</span>
+              </div> :
               <Link
                 key={link.href}
                 href={link.href}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { RegistrationForm } from "./RegistrationForm";
+import { Countdown } from "./Countdown";
 import { fieldsSchema, remainingSlots } from "@/lib/registrationFields";
 
 export const dynamic = "force-dynamic";
@@ -51,12 +52,18 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
               {event.registrationDeadline && <div>
                 <dt className="text-on-surface-variant">Batas pendaftaran</dt>
                 <dd className="mt-1 font-semibold">{deadlineFormat.format(event.registrationDeadline)} WIB</dd>
+                <dd className="mt-1 text-on-surface-variant">
+                  {new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Makassar" }).format(event.registrationDeadline)} WITA
+                  <br />
+                  {new Intl.DateTimeFormat("id-ID", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Jayapura" }).format(event.registrationDeadline)} WIT
+                </dd>
               </div>}
               {open && <div>
                 <dt className="text-on-surface-variant">Kuota</dt>
                 <dd className="mt-1 font-semibold">{remaining === null ? "Tidak dibatasi" : `${remaining} tempat tersisa`}</dd>
               </div>}
             </dl>
+            {open && event.registrationDeadline && <Countdown deadline={event.registrationDeadline.toISOString()} serverNow={now.toISOString()} />}
             {event.description && <p className="whitespace-pre-wrap text-on-surface-variant">{event.description}</p>}
             {event.registrationTerms && (
               <div className="border-t border-outline-variant pt-4">
