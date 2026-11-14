@@ -43,24 +43,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    // Cek apakah misi ini sudah pernah diklaim oleh user (Anti-Replay / Infinite Claim exploit fix)
-    const existingClaim = await prisma.userTransaction.findFirst({
-      where: {
-        userId: user.id,
-        type: "CLAIM_TASK",
-        description: { contains: task.title },
-      },
-    });
-
-    if (existingClaim) {
-      return NextResponse.json(
-        { error: "Misi ini sudah pernah Anda klaim sebelumnya." },
-        { status: 400 }
-      );
-    }
-
-    // Atomic transaction for coin credit & audit transaction log
     const newBalance = await prisma.$transaction(async (tx) => {
+      const description = `Klaim Misi: ${task.title}`;
+      const existingClaim = await tx.userTransaction.findFirst({
+        where: { userId: user.id, type: "CLAIM_TASK", OR: [{ description }, { description: { startsWith: `[misi:${task.id}] ` } }] },
+      });
+      if (existingClaim) return null;
+
       const updatedUser = await tx.user.update({
         where: { id: user.id },
         data: { coins: { increment: task.rewardCoins } },
@@ -72,15 +61,19 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           amount: task.rewardCoins,
           type: "CLAIM_TASK",
-          description: `Klaim Misi: ${task.title}`,
+          description: `[misi:${task.id}] ${description}`,
         },
       });
 
       return updatedUser.coins;
-    });
+    }, { isolationLevel: "Serializable" });
 
+    if (newBalance === null) return NextResponse.json({ error: "Misi ini sudah pernah Anda klaim sebelumnya." }, { status: 400 });
     return NextResponse.json({ success: true, newBalance }, { status: 200 });
-  } catch {
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "P2034") {
+      return NextResponse.json({ error: "Saldo sedang diperbarui. Coba lagi." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

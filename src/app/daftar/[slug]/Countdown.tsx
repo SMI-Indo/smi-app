@@ -8,20 +8,42 @@ export function Countdown({ deadline, serverNow }: { deadline: string; serverNow
   const router = useRouter();
 
   useEffect(() => {
-    const initial = Math.max(0, Date.parse(deadline) - Date.parse(serverNow));
-    const started = performance.now();
+    const end = Date.parse(deadline);
+    let referenceTime = Date.parse(serverNow);
+    let started = performance.now();
+    const abort = new AbortController();
     let refreshed = false;
     function update() {
-      const seconds = Math.max(0, Math.ceil((initial - (performance.now() - started)) / 1000));
+      const seconds = Math.max(0, Math.ceil((end - referenceTime - (performance.now() - started)) / 1000));
       setRemaining(seconds);
       if (seconds === 0 && !refreshed) {
         refreshed = true;
         router.refresh();
       }
     }
+    async function sync() {
+      const sent = performance.now();
+      try {
+        const response = await fetch("/api/time", { signal: abort.signal, cache: "no-store" });
+        if (!response.ok) return;
+        const { now } = await response.json();
+        if (abort.signal.aborted || !Number.isFinite(now)) return;
+        started = (sent + performance.now()) / 2;
+        referenceTime = now;
+        update();
+      } catch {
+        // Keep the last server time when the connection is unavailable.
+      }
+    }
     update();
+    void sync();
+    document.addEventListener("visibilitychange", sync);
     const timer = window.setInterval(update, 1000);
-    return () => window.clearInterval(timer);
+    return () => {
+      abort.abort();
+      document.removeEventListener("visibilitychange", sync);
+      window.clearInterval(timer);
+    };
   }, [deadline, serverNow, router]);
 
   const days = remaining === null ? 0 : Math.floor(remaining / 86400);

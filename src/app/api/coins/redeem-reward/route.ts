@@ -75,10 +75,13 @@ export async function POST(req: NextRequest) {
       });
 
       return updatedUser.coins;
-    });
+    }, { isolationLevel: "Serializable" });
 
     return NextResponse.json({ success: true, newBalance }, { status: 200 });
   } catch (err) {
+    if (err && typeof err === "object" && "code" in err && err.code === "P2034") {
+      return NextResponse.json({ error: "Saldo atau stok sedang diperbarui. Coba lagi." }, { status: 409 });
+    }
     if (err instanceof Error) {
       if (err.message === "OUT_OF_STOCK") {
         return NextResponse.json(

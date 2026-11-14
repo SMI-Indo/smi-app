@@ -31,6 +31,11 @@ export async function saveRegistrationSettings(_: string, form: FormData): Promi
   const registrationCategories = [...new Set(categories.split("\n").map((line) => line.trim()).filter(Boolean))];
   if (!Number.isFinite(date.getTime()) || registrationCategories.some((line) => line.length > 100)) return "Tanggal atau kategori tidak valid.";
   try {
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { date: true, registrationDeadline: true } });
+    if (!event) return "Kegiatan tidak ditemukan.";
+    if (event.registrationDeadline?.getTime() !== date.getTime() && date <= new Date()) return "Pilih tenggat yang masih akan datang.";
+    const eventDay = event.date.toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" });
+    if (deadline.slice(0, 10) > eventDay) return "Tenggat tidak boleh melewati tanggal kegiatan.";
     await prisma.event.update({ where: { id: eventId }, data: {
       registrationSlug: slug, registrationDeadline: date, capacity, registrationTerms: terms, registrationCategories,
       registrationFields: fields,

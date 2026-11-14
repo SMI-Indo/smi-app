@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [upcomingEvents, featuredVideo] = await Promise.all([
     prisma.event.findMany({
-      where: { status: "UPCOMING" },
-      select: { id: true, title: true, category: true, status: true, time: true },
+      where: { status: "UPCOMING", date: { gte: new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }) + "T00:00:00+07:00") } },
+      select: { id: true, title: true, category: true, status: true, time: true, date: true },
       orderBy: { date: "asc" },
       take: 2,
     }).catch(() => null),
@@ -102,7 +102,7 @@ export default async function HomePage() {
                     </div>
                     <div className="flex items-center gap-1.5 font-label-sm text-on-surface-variant mt-4">
                       <span className="material-symbols-outlined text-sm">schedule</span>
-                      <span>{evt.time}</span>
+                      <span>{new Date(evt.date).toLocaleDateString("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" })} · {evt.time}</span>
                     </div>
                   </div>
                 ))

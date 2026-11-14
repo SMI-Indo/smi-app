@@ -39,7 +39,7 @@ export const authOptions: AuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.trim() },
+          where: { email: credentials.email.trim().toLowerCase() },
         });
 
         if (!user || !user.password) {
@@ -116,9 +116,15 @@ export const authOptions: AuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = (token.role as string) || "MEMBER";
-        session.user.isApproved = Boolean(token.isApproved);
+        const current = typeof token.id === "string" ? await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { id: true, email: true, role: true, isApproved: true, memberId: true },
+        }) : null;
+        const active = current && (current.role === "ADMIN" || (current.isApproved && current.memberId));
+        session.user.id = active ? current.id : "";
+        session.user.email = active ? current.email : undefined;
+        session.user.role = active ? current.role : "MEMBER";
+        session.user.isApproved = Boolean(active && current.isApproved);
       }
       return session;
     },

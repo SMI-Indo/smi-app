@@ -6,7 +6,7 @@ import { Video } from "@prisma/client";
 
 export function VideoGallery({ initialVideos }: { initialVideos: Video[] }) {
   const [selectedTab, setSelectedTab] = useState<"ALL" | "TUTORIAL" | "GALLERY" | "FUN_FACT">("ALL");
-  const [activeVideo, setActiveVideo] = useState<Video | null>(
+  const [selectedVideo, setActiveVideo] = useState<Video | null>(
     initialVideos.find((v) => v.category === "TUTORIAL") || initialVideos[0] || null
   );
 
@@ -20,6 +20,8 @@ export function VideoGallery({ initialVideos }: { initialVideos: Video[] }) {
   const filteredVideos = initialVideos.filter(
     (v) => selectedTab === "ALL" || v.category === selectedTab
   );
+
+  const activeVideo = filteredVideos.find((video) => video.id === selectedVideo?.id) ?? filteredVideos[0];
 
   return (
     <div className="space-y-8">
@@ -116,13 +118,15 @@ export function VideoGallery({ initialVideos }: { initialVideos: Video[] }) {
         </div>
       )}
 
+      {filteredVideos.length === 0 && <p>Belum ada video dalam kategori ini.</p>}
       {/* Grid of Other Videos */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredVideos.map((video) => (
-          <div
+          <button
+            type="button"
             key={video.id}
             onClick={() => setActiveVideo(video)}
-            className="group cursor-pointer bg-surface-container-low border border-outline-variant rounded-2xl overflow-hidden card-glow flex flex-col transition-all"
+            className="group text-left cursor-pointer bg-surface-container-low border border-outline-variant rounded-2xl overflow-hidden card-glow flex flex-col transition-all"
           >
             <div className="relative aspect-video bg-neutral-900">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -149,7 +153,7 @@ export function VideoGallery({ initialVideos }: { initialVideos: Video[] }) {
                 <span>Oleh: {video.author}</span>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

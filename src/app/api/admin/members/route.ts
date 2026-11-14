@@ -45,7 +45,7 @@ const createMemberSchema = z.object({
   nickname: z.string().optional().nullable(),
   email: z.string().email("Format email tidak valid"),
   phone: z.string().optional().nullable(),
-  password: z.string().min(6, "Password minimal 6 karakter").default("password123"),
+  password: z.string().min(8, "Kata sandi minimal 8 karakter"),
   parish: z.string().optional().nullable(),
   rank: z.string().default("Mula"),
   role: z.enum(["MEMBER", "ADMIN"]).default("MEMBER"),

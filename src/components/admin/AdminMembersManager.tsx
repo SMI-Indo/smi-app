@@ -34,7 +34,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     nickname: "",
     email: "",
     phone: "",
-    password: "password123",
+    password: "",
     parish: "",
     rank: "Mula",
     role: "MEMBER" as "MEMBER" | "ADMIN",
@@ -172,7 +172,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
           nickname: "",
           email: "",
           phone: "",
-          password: "password123",
+          password: "",
           parish: "",
           rank: "Mula",
           role: "MEMBER",
@@ -248,7 +248,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     e.preventDefault();
     if (!resetPwMember) return;
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       setMessage({ type: "error", text: "Password minimal harus 6 karakter." });
       return;
     }
@@ -779,7 +779,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     required
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    placeholder="password123"
+                    placeholder="Minimal 8 karakter" minLength={8}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
                   />
                 </div>

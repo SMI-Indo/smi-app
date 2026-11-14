@@ -1,3 +1,4 @@
+import { liturgyQuizEnabled } from "@/lib/featureFlags";
 import { prisma } from "@/lib/prisma";
 import { AdminQuizManager, QuizData } from "@/components/admin/AdminQuizManager";
 
@@ -36,5 +37,8 @@ export default async function AdminQuizPage() {
     console.error("Error loading admin quizzes page:", error);
   }
 
-  return <AdminQuizManager initialQuizzes={quizzes} />;
+  return <>
+    {!liturgyQuizEnabled && <p role="status">Kuis belum dibuka untuk peserta.</p>}
+    <AdminQuizManager initialQuizzes={quizzes} />
+  </>;
 }

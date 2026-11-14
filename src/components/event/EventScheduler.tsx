@@ -21,7 +21,7 @@ const subscribeFormSchema = z.object({
 
 type SubscribeValues = z.infer<typeof subscribeFormSchema>;
 
-export function EventScheduler({ initialEvents, registrationBase }: { initialEvents: Event[]; registrationBase?: string }) {
+export function EventScheduler({ initialEvents, registrationBase, serverNow = 0 }: { initialEvents: Event[]; registrationBase?: string; serverNow?: number }) {
   const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA">("ALL");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ success: boolean; text: string } | null>(null);
@@ -46,7 +46,7 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
       });
       const responseJson = await res.json();
       if (res.ok) {
-        setMsg({ success: true, text: "Terima kasih! Anda berhasil berlangganan jadwal acara daring SMI." });
+        setMsg({ success: true, text: "Terima kasih, kontak Anda sudah tercatat." });
         reset();
       } else {
         setMsg({ success: false, text: responseJson.error || "Gagal mendaftar." });
@@ -128,14 +128,14 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
               <div className="flex items-center justify-between text-xs text-on-surface-variant mt-4 font-mono">
                 <div className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-sm text-primary">schedule</span>
-                  <span>{evt.time}</span>
+                  <span>{new Date(evt.date).toLocaleDateString("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" })} · {evt.time}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-sm text-primary">location_on</span>
                   <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
-              {!isCompleted && evt.registrationSlug && evt.registrationDeadline && (
+              {evt.status === "UPCOMING" && evt.registrationSlug && evt.registrationDeadline && new Date(evt.registrationDeadline).getTime() > serverNow && (
                 <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
                   href={registrationHref(evt.registrationSlug, registrationBase)}>Lihat pendaftaran</Link>
               )}
@@ -150,9 +150,9 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
       <div className="max-w-xl mx-auto p-8 rounded-2xl bg-surface-container-low border border-outline-variant card-glow space-y-6">
         <div className="text-center space-y-2">
           <span className="material-symbols-outlined text-3xl text-primary">notifications_active</span>
-          <h3 className="font-headline-md text-on-surface">Dapatkan Jadwal Langsung</h3>
+          <h3 className="font-headline-md text-on-surface">Tinggalkan Kontak</h3>
           <p className="font-body-md text-sm text-on-surface-variant">
-            Berlangganan sekarang untuk menerima pembaharuan jadwal webinar dan temu daring SMI langsung ke Email / WhatsApp Anda.
+            Tinggalkan email atau nomor WhatsApp jika ingin dihubungi tentang jadwal SMI.
           </p>
         </div>
 
@@ -174,6 +174,7 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
               type="text"
               {...register("contact")}
               disabled={loading}
+              aria-label="Email atau nomor WhatsApp"
               placeholder="Email atau No. WA (0812...)"
               className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md focus:outline-none focus:border-primary transition-colors text-sm"
             />
@@ -186,7 +187,7 @@ export function EventScheduler({ initialEvents, registrationBase }: { initialEve
             disabled={loading}
             className="bg-primary text-white font-label-lg px-6 py-3 rounded-full hover:bg-primary-container transition-all active:scale-95 text-sm shrink-0 h-[48px] cursor-pointer"
           >
-            {loading ? "Mendaftar..." : "Berlangganan"}
+            {loading ? "Menyimpan…" : "Simpan kontak"}
           </button>
         </form>
       </div>

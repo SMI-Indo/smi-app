@@ -80,7 +80,7 @@ export function CoinInterface({
           id: createUniqueId(),
           amount: task?.rewardCoins || 0,
           type: "CLAIM_TASK",
-          description: `Klaim Misi: ${task?.title}`,
+          description: `[misi:${taskId}] Klaim Misi: ${task?.title}`,
           createdAt: new Date().toISOString(),
         });
       } else {
@@ -193,7 +193,7 @@ export function CoinInterface({
                 </div>
                 <button
                   onClick={() => handleClaim(task.id)}
-                  disabled={claimingId !== null}
+                  disabled={claimingId !== null || history.some((tx) => tx.type === "CLAIM_TASK" && (tx.description.startsWith(`[misi:${task.id}] `) || tx.description === `Klaim Misi: ${task.title}`))}
                   className="w-full mt-4 bg-primary text-white font-label-lg py-2.5 rounded-full hover:bg-primary-container transition-all active:scale-[0.98] disabled:opacity-50 text-xs cursor-pointer"
                 >
                   {claimingId === task.id ? "Mengklaim..." : "Klaim Koin"}
@@ -257,7 +257,7 @@ export function CoinInterface({
                 <div key={tx.id} className="p-3 rounded-xl bg-surface border border-outline/10 flex justify-between items-center gap-3">
                   <div className="min-w-0">
                     <p className="font-body-md font-bold text-xs text-on-surface truncate">
-                      {tx.description}
+                      {tx.description.replace(/^\[misi:[^\]]+\] /, "")}
                     </p>
                     <p className="text-[9px] text-on-surface-variant font-mono mt-0.5">
                       {new Date(tx.createdAt).toLocaleDateString("id-ID", {

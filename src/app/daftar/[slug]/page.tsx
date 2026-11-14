@@ -83,7 +83,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
             <RegistrationForm slug={slug} categories={event.registrationCategories} fields={fields.data} />
           ) : (
             <section>
-              <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : "Pendaftaran tidak tersedia"}</h2>
+              <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : !event ? "Kegiatan tidak ditemukan" : event.registrationDeadline && event.registrationDeadline <= now ? "Pendaftaran sudah ditutup" : "Pendaftaran belum tersedia"}</h2>
               <p className="mt-2 text-sm text-on-surface-variant">
                 {event && remaining === 0 ? "Semua tempat untuk kegiatan ini sudah terisi." : "Periksa daftar acara untuk melihat pendaftaran yang masih dibuka."}
               </p>

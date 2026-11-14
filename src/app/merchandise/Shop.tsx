@@ -31,6 +31,7 @@ export function Shop({ products, signedIn }: { products: MerchandiseVariant[]; s
   const visible = products.filter((item) => (!category || item.category === category) &&
     (item.name + " " + item.description + " " + item.size).toLowerCase().includes(search.trim().toLowerCase()));
   const selected = products.filter((item) => cart[item.id] > 0);
+  const unavailable = Object.entries(cart).filter(([id, quantity]) => quantity > 0 && !products.some((item) => item.id === id));
   const total = selected.reduce((sum, item) => sum + item.price * cart[item.id], 0);
 
   function change(item: MerchandiseVariant, delta: number) {
@@ -78,6 +79,7 @@ export function Shop({ products, signedIn }: { products: MerchandiseVariant[]; s
     </section>
     <aside className="space-y-4 rounded-xl border border-outline-variant p-5 self-start">
       <h2 className="font-headline-md">Keranjang</h2>
+      {unavailable.length > 0 && <p role="status">Sebagian barang sudah tidak tersedia. <button type="button" className="underline" onClick={() => unavailable.forEach(([id, quantity]) => adjust(id, -quantity, 0))}>Hapus barang yang tidak tersedia</button></p>}
       {selected.length === 0 && <p>Keranjang masih kosong.</p>}
       {selected.map((item) => <div key={item.id} className="space-y-2 border-b pb-3">
         <p>{item.name} · {item.size}</p><div className="flex items-center gap-3">

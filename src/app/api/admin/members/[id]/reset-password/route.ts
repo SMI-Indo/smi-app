@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import * as z from "zod";
 
 const resetPasswordSchema = z.object({
-  newPassword: z.string().min(6, "Password minimal 6 karakter"),
+  newPassword: z.string().min(8, "Kata sandi minimal 8 karakter"),
 });
 
 export async function POST(

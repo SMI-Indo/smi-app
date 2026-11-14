@@ -11,7 +11,7 @@ const loginSchema = z.object({
   email: z.string().trim().email({ message: "Format email tidak valid" }),
   password: z
     .string()
-    .min(8, { message: "Kata sandi minimal harus 8 karakter" }),
+    .min(1, { message: "Kata sandi wajib diisi" }),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;

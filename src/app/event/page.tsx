@@ -14,7 +14,6 @@ export default async function EventPage() {
         category: { in: ["WEBINAR", "TEMU_ONLINE", "WORKSHOP", "ACARA"] },
       },
       orderBy: { date: "asc" },
-      take: 100,
     });
   } catch {
     unavailable = true;
@@ -39,7 +38,7 @@ export default async function EventPage() {
 
       {/* Scheduler Interactive area */}
       <section className="max-w-6xl mx-auto px-4 py-12">
-        {unavailable ? <p role="alert">Jadwal belum bisa dimuat. Coba muat ulang halaman.</p> : <EventScheduler initialEvents={events} registrationBase={registrationOrigin()} />}
+        {unavailable ? <p role="alert">Jadwal belum bisa dimuat. Coba muat ulang halaman.</p> : <EventScheduler initialEvents={events} registrationBase={registrationOrigin()} serverNow={new Date().getTime()} />}
       </section>
     </main>
   );
