@@ -49,3 +49,7 @@ export const answersSchema = z.array(field.omit({ required: true }).extend({
 export function remainingSlots(capacity: number | null, registered: number) {
   return capacity === null ? null : Math.max(0, capacity - registered);
 }
+
+export function registrationWindowOpen(status: string, deadline: Date | null, now = new Date()) {
+  return status === "UPCOMING" && deadline !== null && deadline > now;
+}

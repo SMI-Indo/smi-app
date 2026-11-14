@@ -93,4 +93,9 @@ ALTER TABLE "MerchandiseOrderItem" ADD CONSTRAINT "MerchandiseOrderItem_variantI
 ALTER TABLE "EventRegistration" ADD CONSTRAINT "EventRegistration_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
+ALTER TABLE "EventRegistration" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MerchandiseVariant" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MerchandiseOrder" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MerchandiseOrderItem" ENABLE ROW LEVEL SECURITY;
+
 COMMIT;

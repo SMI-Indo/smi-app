@@ -39,7 +39,7 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
     const paging = participantPage(requestedPage, count);
     const participants = count === 0 ? [] : await tx.eventRegistration.findMany({
       where, orderBy: participantOrder, skip: paging.skip, take: participantPageSize,
-      select: { id: true, name: true, email: true, community: true, category: true, phone: true, notes: true, customAnswers: true },
+      select: { id: true, name: true, email: true, community: true, category: true, phone: true, notes: true, customAnswers: true, createdAt: true },
     });
     return { count, paging, participants };
   }, { isolationLevel: "RepeatableRead" });
@@ -120,6 +120,9 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
                   <div><dt className="font-medium">Asal paroki</dt><dd>{item.community}</dd></div>
                   {item.category && <div><dt className="font-medium">Cabang</dt><dd>{item.category}</dd></div>}
                   <div><dt className="font-medium">Kode registrasi</dt><dd>{item.id}</dd></div>
+                  <div><dt className="font-medium">Waktu daftar</dt><dd><time dateTime={item.createdAt.toISOString()}>
+                    {item.createdAt.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "medium" })} WIB
+                  </time></dd></div>
                   {item.phone && <div><dt className="font-medium">WhatsApp</dt><dd>{item.phone}</dd></div>}
                   {item.notes && <div><dt className="font-medium">Catatan</dt><dd className="whitespace-pre-wrap">{item.notes}</dd></div>}
                   {answers.success && answers.data.map(({ id, label, type, value }) => (

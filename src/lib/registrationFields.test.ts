@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { readAnswers, remainingSlots, type RegistrationField } from "./registrationFields";
+import { readAnswers, registrationWindowOpen, remainingSlots, type RegistrationField } from "./registrationFields";
 
 describe("registration settings", () => {
+  it("closes exactly at the configured deadline across time zones", () => {
+    const deadline = new Date("2026-11-30T20:00:00+07:00");
+    expect(registrationWindowOpen("UPCOMING", deadline, new Date(deadline.getTime() - 1))).toBe(true);
+    expect(registrationWindowOpen("UPCOMING", deadline, new Date("2026-11-30T21:00:00+08:00"))).toBe(false);
+    expect(registrationWindowOpen("UPCOMING", deadline, new Date("2026-11-30T22:00:01+09:00"))).toBe(false);
+    expect(registrationWindowOpen("UPCOMING", null)).toBe(false);
+  });
   it("distinguishes unlimited, available, and exhausted capacity", () => {
     expect(remainingSlots(null, 500)).toBeNull();
     expect(remainingSlots(5, 3)).toBe(2);
