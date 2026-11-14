@@ -198,3 +198,24 @@ describe("NextAuth Credentials authorize provider", () => {
     expect(result.role).toBe("ADMIN");
   });
 });
+
+describe("server session freshness", () => {
+  it("invalidates sessions after a password reset", async () => {
+    const user = { id: "member-1", email: "member@smi.org", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "old-bcrypt-hash" } as User;
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(user);
+    const token = await authOptions.callbacks!.jwt!({ token: {}, user, account: null, trigger: "signIn" });
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...user, password: "new-bcrypt-hash" });
+    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token });
+    expect(session.user).toMatchObject({ id: "" });
+    expect(session.user?.email).toBeUndefined();
+  });
+  it("keeps an unchanged active account session", async () => {
+    const user = { id: "member-1", email: "member@smi.org", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "bcrypt-hash" } as User;
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(user);
+    const token = await authOptions.callbacks!.jwt!({ token: {}, user, account: null, trigger: "signIn" });
+    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token });
+    expect(session.user).toMatchObject({ id: user.id });
+    expect(session).not.toHaveProperty("credentialVersion");
+    expect(session.user).not.toHaveProperty("password");
+  });
+});

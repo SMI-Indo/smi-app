@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import bcrypt from "bcryptjs";
 import * as z from "zod";
+import { updateMemberSafely, validateMemberApproval, memberMutationError } from "@/lib/memberAdmin";
 
 export const revalidate = 0;
 
@@ -34,6 +35,8 @@ export async function GET() {
 
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
+    const issue = memberMutationError(error);
+    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
     console.error("Error fetching members:", error);
     return NextResponse.json({ error: "Gagal memuat data pengguna" }, { status: 500 });
   }
@@ -117,6 +120,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      validateMemberApproval(role, isApproved, cleanMemberId);
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newUser = await prisma.user.create({
@@ -177,23 +181,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
+    const updated = await updateMemberSafely(userId, {
         isApproved,
         memberId: memberId && memberId.trim() !== "" ? memberId.trim().toUpperCase() : undefined,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        isApproved: true,
-        memberId: true,
-      },
     });
 
     return NextResponse.json({ success: true, user: updated }, { status: 200 });
   } catch (error) {
+    const issue = memberMutationError(error);
+    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
     console.error("Error in POST /api/admin/members:", error);
     return NextResponse.json({ error: "Gagal memproses data anggota" }, { status: 500 });
   }

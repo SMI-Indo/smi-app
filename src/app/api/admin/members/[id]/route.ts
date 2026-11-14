@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
+import { updateMemberSafely, deleteMemberSafely, memberMutationError } from "@/lib/memberAdmin";
 
 const updateMemberSchema = z.object({
   name: z.string().min(1, "Nama tidak boleh kosong").optional(),
@@ -38,6 +39,9 @@ export async function PUT(
     }
 
     const data = parsed.data;
+    if (id === auth.user.id && data.role === "MEMBER") {
+      return NextResponse.json({ error: "Anda tidak dapat menurunkan role akun admin yang sedang digunakan." }, { status: 400 });
+    }
 
     // Check if email changed and duplicates another user
     if (data.email) {
@@ -66,9 +70,7 @@ export async function PUT(
       }
     }
 
-    const updated = await prisma.user.update({
-      where: { id },
-      data: {
+    const updated = await updateMemberSafely(id, {
         ...(data.name && { name: data.name.trim() }),
         ...(data.nickname !== undefined && { nickname: data.nickname ? data.nickname.trim() : null }),
         ...(data.email && { email: data.email.toLowerCase().trim() }),
@@ -81,26 +83,12 @@ export async function PUT(
         ...(data.memberId !== undefined && {
           memberId: data.memberId && data.memberId.trim() !== "" ? data.memberId.trim().toUpperCase() : null,
         }),
-      },
-      select: {
-        id: true,
-        name: true,
-        nickname: true,
-        email: true,
-        phone: true,
-        role: true,
-        isApproved: true,
-        memberId: true,
-        parish: true,
-        rank: true,
-        coins: true,
-        violationPoints: true,
-        updatedAt: true,
-      },
     });
 
     return NextResponse.json({ success: true, user: updated }, { status: 200 });
   } catch (error) {
+    const issue = memberMutationError(error);
+    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
     console.error("Error updating member:", error);
     return NextResponse.json({ error: "Gagal memperbarui data anggota" }, { status: 500 });
   }
@@ -126,12 +114,12 @@ export async function DELETE(
   }
 
   try {
-    await prisma.user.delete({
-      where: { id },
-    });
+    await deleteMemberSafely(id);
 
     return NextResponse.json({ success: true, message: "Anggota berhasil dihapus." }, { status: 200 });
   } catch (error) {
+    const issue = memberMutationError(error);
+    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
     console.error("Error deleting member:", error);
     return NextResponse.json({ error: "Gagal menghapus anggota dari basis data" }, { status: 500 });
   }

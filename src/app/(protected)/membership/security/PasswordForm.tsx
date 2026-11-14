@@ -1,0 +1,36 @@
+"use client";
+
+import { useState } from "react";
+import { signOut } from "next-auth/react";
+
+export function PasswordForm() {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+    if (data.newPassword !== data.confirmation) { setError("Konfirmasi kata sandi belum sama."); return; }
+    setPending(true); setError("");
+    try {
+      const response = await fetch("/api/account/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      const result = await response.json();
+      if (!response.ok) { setError(result.error || "Kata sandi belum tersimpan."); return; }
+      form.reset(); setSaved(true);
+      await signOut({ callbackUrl: "/login" });
+    } catch { setError("Koneksi terganggu. Jika kata sandi sudah tersimpan, masuk kembali menggunakan kata sandi baru."); }
+    finally { setPending(false); }
+  }
+  return <form onSubmit={submit} className="smi-form space-y-5" aria-busy={pending}>
+    <fieldset disabled={pending || saved} className="space-y-5">
+      <label>Kata sandi saat ini<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} /></label>
+      <label>Kata sandi baru<input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={128} aria-describedby="password-help" /></label>
+      <p id="password-help" className="text-sm text-on-surface-variant">Gunakan minimal 8 karakter yang tidak digunakan di akun lain.</p>
+      <label>Ulangi kata sandi baru<input name="confirmation" type="password" autoComplete="new-password" required minLength={8} maxLength={128} /></label>
+      <button className="registration-submit w-full" type="submit">{pending ? "Menyimpan…" : "Simpan kata sandi"}</button>
+    </fieldset>
+    {error && <p role="alert" className="text-error">{error}</p>}
+    {saved && <p role="status">Kata sandi tersimpan. <a href="/login" className="text-primary underline">Masuk kembali</a></p>}
+  </form>;
+}

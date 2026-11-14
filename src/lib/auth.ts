@@ -5,6 +5,11 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { previewSessionCookie } from "./sessionCookie";
+import { createHash } from "node:crypto";
+
+function credentialVersion(password: string | null) {
+  return createHash("sha256").update(password ?? "oauth-only").digest("hex");
+}
 
 const sessionToken = previewSessionCookie();
 
@@ -111,6 +116,8 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.isApproved = user.isApproved;
+        const current = await prisma.user.findUnique({ where: { id: user.id }, select: { password: true } });
+        token.credentialVersion = current ? credentialVersion(current.password) : undefined;
       }
       return token;
     },
@@ -118,9 +125,10 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         const current = typeof token.id === "string" ? await prisma.user.findUnique({
           where: { id: token.id },
-          select: { id: true, email: true, role: true, isApproved: true, memberId: true },
+          select: { id: true, email: true, role: true, isApproved: true, memberId: true, password: true },
         }) : null;
-        const active = current && (current.role === "ADMIN" || (current.isApproved && current.memberId));
+        const active = current && token.credentialVersion === credentialVersion(current.password) &&
+          (current.role === "ADMIN" || (current.isApproved && current.memberId));
         session.user.id = active ? current.id : "";
         session.user.email = active ? current.email : undefined;
         session.user.role = active ? current.role : "MEMBER";

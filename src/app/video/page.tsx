@@ -2,10 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { VideoGallery } from "@/components/video/VideoGallery";
 import Image from "next/image";
 import { Video } from "@prisma/client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function VideoPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login");
   let videos: Video[] | null = null;
   try {
     videos = await prisma.video.findMany({

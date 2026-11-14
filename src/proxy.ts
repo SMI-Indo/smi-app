@@ -1,21 +1,11 @@
 import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
 import { previewSessionCookie } from "@/lib/sessionCookie";
 
 const sessionToken = previewSessionCookie();
 
 export default withAuth(
-  function proxy(req) {
-    const token = req.nextauth.token;
-    const pathname = req.nextUrl.pathname;
-
-    // Proteksi khusus rute admin: hanya untuk role ADMIN
-    if (pathname.startsWith("/admin") && token?.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/login?error=AdminAccessRequired", req.url));
-    }
-
-    return NextResponse.next();
-  },
+  // Current account status and role are checked in server pages/layouts and APIs.
+  // The JWT role is a snapshot and must not block a newly promoted admin.
   {
     ...(sessionToken && { cookies: { sessionToken } }),
     callbacks: {
