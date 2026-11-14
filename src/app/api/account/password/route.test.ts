@@ -21,3 +21,8 @@ it("changes only the current account with an unchanged password hash", async () 
 });
 it("does not overwrite a concurrent admin reset", async () => { deps.update.mockResolvedValue({ count: 0 }); expect((await POST(request())).status).toBe(409); });
 it("handles provider-only accounts without inventing a password", async () => { deps.find.mockResolvedValue({ password: null }); expect((await POST(request())).status).toBe(400); expect(deps.update).not.toHaveBeenCalled(); });
+it("rejects passwords exceeding bcrypt's 72 UTF-8 byte limit", async () => {
+ const password = "é".repeat(37);
+ expect((await POST(request({ newPassword: password, confirmation: password }))).status).toBe(400);
+ expect(deps.update).not.toHaveBeenCalled();
+});

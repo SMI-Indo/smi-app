@@ -76,6 +76,7 @@ export const authOptions: AuthOptions = {
           image: user.image,
           role: user.role,
           isApproved: user.isApproved,
+          credentialVersion: credentialVersion(user.password),
         };
       },
     }),
@@ -116,8 +117,12 @@ export const authOptions: AuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.isApproved = user.isApproved;
-        const current = await prisma.user.findUnique({ where: { id: user.id }, select: { password: true } });
-        token.credentialVersion = current ? credentialVersion(current.password) : undefined;
+        if ("credentialVersion" in user && typeof user.credentialVersion === "string") {
+          token.credentialVersion = user.credentialVersion;
+        } else {
+          const current = await prisma.user.findUnique({ where: { id: user.id }, select: { password: true } });
+          token.credentialVersion = current ? credentialVersion(current.password) : undefined;
+        }
       }
       return token;
     },

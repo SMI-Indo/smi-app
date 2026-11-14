@@ -38,6 +38,9 @@ export async function deleteMemberSafely(id: string) {
     if (current.role === "ADMIN" && await tx.user.count({ where: { role: "ADMIN" } }) <= 1) {
       throw new MemberPolicyError("Tidak dapat menghapus admin terakhir.");
     }
+    if (await tx.violationRecord.count({ where: { userId: id } }) > 0) {
+      throw new MemberPolicyError("Anggota memiliki riwayat pelanggaran. Nonaktifkan persetujuannya untuk mempertahankan riwayat dan bukti.");
+    }
     await tx.user.delete({ where: { id } });
   }, { isolationLevel: "Serializable" });
 }

@@ -199,13 +199,15 @@ describe("NextAuth Credentials authorize provider", () => {
   });
 });
 
+type SessionArgs = Parameters<NonNullable<NonNullable<typeof authOptions.callbacks>["session"]>>[0];
+
 describe("server session freshness", () => {
   it("invalidates sessions after a password reset", async () => {
     const user = { id: "member-1", email: "member@smi.org", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "old-bcrypt-hash" } as User;
     vi.mocked(prisma.user.findUnique).mockResolvedValue(user);
     const token = await authOptions.callbacks!.jwt!({ token: {}, user, account: null, trigger: "signIn" });
     vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...user, password: "new-bcrypt-hash" });
-    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token });
+    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token } as SessionArgs);
     expect(session.user).toMatchObject({ id: "" });
     expect(session.user?.email).toBeUndefined();
   });
@@ -213,9 +215,20 @@ describe("server session freshness", () => {
     const user = { id: "member-1", email: "member@smi.org", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "bcrypt-hash" } as User;
     vi.mocked(prisma.user.findUnique).mockResolvedValue(user);
     const token = await authOptions.callbacks!.jwt!({ token: {}, user, account: null, trigger: "signIn" });
-    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token });
+    const session = await authOptions.callbacks!.session!({ session: { user: { id: user.id, email: user.email, role: "MEMBER" }, expires: "2099" }, token } as SessionArgs);
     expect(session.user).toMatchObject({ id: user.id });
     expect(session).not.toHaveProperty("credentialVersion");
     expect(session.user).not.toHaveProperty("password");
   });
+});
+it("cannot authenticate an old password while a reset races token creation", async () => {
+  const old = { id: "member-1", email: "member@smi.org", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "old-hash" } as User;
+  vi.mocked(prisma.user.findUnique).mockResolvedValue(old); mockCompare.mockResolvedValue(true);
+  const provider = authOptions.providers.find((p) => p.id === "credentials");
+  if (!provider || !("options" in provider)) throw new Error("Missing provider");
+  const authenticated = await (provider.options.authorize as AuthorizeFn)({ email: old.email, password: "old-password" }, {}) as User;
+  vi.mocked(prisma.user.findUnique).mockResolvedValue({ ...old, password: "reset-hash" });
+  const token = await authOptions.callbacks!.jwt!({ token: {}, user: authenticated, account: null, trigger: "signIn" });
+  const session = await authOptions.callbacks!.session!({ session: { user: { id: old.id, email: old.email, role: "MEMBER" }, expires: "2099" }, token } as SessionArgs);
+  expect(session.user).toMatchObject({ id: "" });
 });

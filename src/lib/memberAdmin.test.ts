@@ -1,12 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { updateMemberSafely, deleteMemberSafely } from "./memberAdmin";
-const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), count: vi.fn(), update: vi.fn(), delete: vi.fn() }, $transaction: vi.fn() }));
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), count: vi.fn(), update: vi.fn(), delete: vi.fn() }, violationRecord: { count: vi.fn() }, $transaction: vi.fn() }));
 vi.mock("./prisma", () => ({ prisma: db }));
 beforeEach(() => {
   vi.resetAllMocks();
   db.$transaction.mockImplementation(async (run) => run(db));
   db.user.findUnique.mockResolvedValue({ role: "MEMBER", isApproved: false, memberId: null });
   db.user.count.mockResolvedValue(2);
+  db.violationRecord.count.mockResolvedValue(0);
   db.user.update.mockResolvedValue({ id: "member" });
 });
 it("rejects approval without a member ID", async () => {
@@ -35,4 +36,10 @@ it("blocks deleting the final admin", async () => {
 it("allows deleting a member", async () => {
   await deleteMemberSafely("member");
   expect(db.user.delete).toHaveBeenCalledWith({ where: { id: "member" } });
+});
+
+it("preserves disciplinary history instead of cascading away private evidence", async () => {
+ db.violationRecord.count.mockResolvedValue(1);
+ await expect(deleteMemberSafely("member")).rejects.toThrow("riwayat pelanggaran");
+ expect(db.user.delete).not.toHaveBeenCalled();
 });
