@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -50,6 +51,7 @@ export async function PUT(
       },
     });
 
+    revalidatePath("/admin/events", "layout");
     return NextResponse.json({ success: true, event: updated }, { status: 200 });
   } catch (error) {
     console.error("Error updating event:", error);
@@ -72,6 +74,7 @@ export async function DELETE(
     await prisma.event.delete({
       where: { id },
     });
+    revalidatePath("/admin/events", "layout");
     return NextResponse.json({ success: true, message: "Jadwal kegiatan berhasil dihapus." }, { status: 200 });
   } catch (error) {
     console.error("Error deleting event:", error);

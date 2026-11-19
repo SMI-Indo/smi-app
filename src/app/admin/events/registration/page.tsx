@@ -1,3 +1,4 @@
+import { scheduleOrder } from "@/lib/adminSchedule";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { adminRegistrationHref } from "./paths";
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function RegistrationSettingsPage() {
   const events = await prisma.event.findMany({
-    orderBy: [{ date: "desc" }, { id: "asc" }],
+    orderBy: scheduleOrder,
     select: {
       id: true, title: true, date: true, registrationSlug: true, capacity: true,
       _count: { select: { registrations: true } },
@@ -16,6 +17,7 @@ export default async function RegistrationSettingsPage() {
   return (
     <section className="max-w-4xl space-y-5">
       <h1 className="font-headline-lg text-primary">Pendaftaran Acara</h1>
+      <Link href="/admin/events" className="inline-flex min-h-11 items-center text-primary underline">Kelola jadwal kegiatan</Link>
       {events.length === 0 ? (
         <p>Belum ada kegiatan. <Link href="/admin/events" className="underline">Buka jadwal kegiatan</Link>.</p>
       ) : (

@@ -47,6 +47,6 @@ export async function saveRegistrationSettings(_: string, form: FormData): Promi
     return "Pengaturan tidak dapat disimpan. Coba lagi.";
   }
   revalidatePath("/daftar", "layout");
-  revalidatePath("/admin/events/registration", "layout");
+  revalidatePath("/admin/events", "layout");
   redirect(adminRegistrationHref(eventId, slug) + "?saved=1");
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { adminRegistrationHref, suggestRegistrationSlug } from "@/app/admin/events/registration/paths";
 
 export type EventCategory = "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA";
@@ -25,7 +26,8 @@ interface AdminEventsManagerProps {
 }
 
 export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
-  const [events, setEvents] = useState<EventData[]>(initialEvents);
+  const router = useRouter();
+  const events = initialEvents;
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -58,7 +60,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
 
   // Filter
   const filtered = events.filter((e) => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     const matchSearch =
       e.title.toLowerCase().includes(q) ||
       (e.description && e.description.toLowerCase().includes(q)) ||
@@ -118,15 +120,13 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       const data = await res.json();
       if (res.ok) {
         if (isEdit) {
-          setEvents((prev) =>
-            prev.map((ev) => (ev.id === editingEvent.id ? { ...ev, ...data.event } : ev))
-          );
+          router.refresh();
           setMessage({
             type: "success",
             text: `Jadwal "${formData.title}" berhasil diperbarui.`,
           });
         } else {
-          setEvents((prev) => [data.event, ...prev]);
+          router.refresh();
           setMessage({
             type: "success",
             text: `Jadwal kegiatan baru "${formData.title}" berhasil ditambahkan.`,
@@ -156,7 +156,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
 
       const data = await res.json();
       if (res.ok) {
-        setEvents((prev) => prev.filter((ev) => ev.id !== deletingEvent.id));
+        router.refresh();
         setMessage({
           type: "success",
           text: `Jadwal "${deletingEvent.title}" berhasil dihapus.`,

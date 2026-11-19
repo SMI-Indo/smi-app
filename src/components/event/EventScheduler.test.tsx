@@ -7,7 +7,7 @@ describe("jadwal acara", () => {
   it("memungkinkan penyaringan workshop dan tidak menampilkan tombol palsu", () => {
     const event: Event = {
       registrationSlug: null, registrationDeadline: null, capacity: null,
-      registrationTerms: null, registrationCategories: [],
+      registrationTerms: null, registrationCategories: [], registrationFields: [],
       id: "event-1", title: "Workshop", description: null, category: "WORKSHOP",
       date: new Date("2027-01-01"), time: "10:00", location: "Online",
       status: "UPCOMING", createdAt: new Date(), updatedAt: new Date(),

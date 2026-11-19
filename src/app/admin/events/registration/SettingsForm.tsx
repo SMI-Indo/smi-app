@@ -38,7 +38,8 @@ export function SettingsForm({ event }: { event: Settings }) {
       </fieldset>
       <fieldset className="min-w-0 space-y-4 border-t border-outline-variant pt-4">
         <legend className="pr-3 text-lg font-semibold">Ketentuan kegiatan</legend>
-        <label>Syarat pendaftaran<textarea name="terms" rows={4} defaultValue={event.terms} maxLength={10000} required /></label>
+        <label>Syarat pendaftaran<textarea name="terms" rows={5} defaultValue={event.terms} maxLength={10000} required aria-describedby="registration-terms-hint" /></label>
+        <p id="registration-terms-hint" className="text-sm text-on-surface-variant">Untuk menambahkan panduan atau dokumen, tulis tiap tautan pada baris tersendiri. Gunakan format <code>Panduan teknis | https://alamat-dokumen</code>.</p>
         <div>
           <label>Cabang lomba<textarea name="categories" rows={3} defaultValue={event.categories}
             maxLength={1000} aria-describedby="registration-categories-hint" /></label>

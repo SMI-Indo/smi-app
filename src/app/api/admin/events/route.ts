@@ -1,3 +1,5 @@
+import { scheduleOrder, scheduleSelect } from "@/lib/adminSchedule";
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
@@ -14,7 +16,8 @@ export async function GET() {
 
   try {
     const events = await prisma.event.findMany({
-      orderBy: { date: "asc" },
+      orderBy: scheduleOrder,
+      select: scheduleSelect,
     });
     return NextResponse.json({ events }, { status: 200 });
   } catch (error) {
@@ -67,6 +70,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    revalidatePath("/admin/events", "layout");
     return NextResponse.json({ success: true, event: newEvent }, { status: 201 });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

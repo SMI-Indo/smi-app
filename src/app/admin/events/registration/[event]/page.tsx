@@ -1,3 +1,4 @@
+import { participantViewCode } from "@/lib/participantView";
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "../SettingsForm";
 import { ParticipantControls } from "../ParticipantControls";
@@ -53,6 +54,8 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
 
   const origin = registrationOrigin();
   const fields = fieldsSchema.safeParse(event.registrationFields);
+  const viewCode = event.registrationSlug ? participantViewCode(event.id, event.registrationSlug) : null;
+  const participantsHref = event.registrationSlug ? "/daftar/" + encodeURIComponent(event.registrationSlug) + "/peserta" : null;
   const publicHref = event.registrationSlug ? registrationHref(event.registrationSlug, origin) : null;
 
   return <section className="max-w-5xl space-y-6">
@@ -70,6 +73,17 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
           Buka formulir publik <span aria-hidden="true">↗</span><span className="sr-only"> (tab baru)</span>
         </Link>
       ) : <p className="mt-3 text-sm text-on-surface-variant">Simpan pengaturan untuk membuat tautan pendaftaran.</p>}
+      {participantsHref && <details className="mt-3 max-w-lg rounded-lg border border-outline-variant px-4">
+        <summary className="min-h-11 cursor-pointer py-3 font-semibold">Akses daftar peserta</summary>
+        <div className="space-y-2 pb-4 text-sm">
+          <Link href={participantsHref} prefetch={false} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-primary underline">Buka halaman daftar peserta</Link>
+          {viewCode ? <>
+            <p>Bagikan kode akses secara terpisah dari tautan.</p>
+            <p><code className="select-all break-all rounded bg-surface-container px-2 py-1">{viewCode}</code></p>
+            <p>Kode berubah jika nama tautan pendaftaran diubah.</p>
+          </> : <p role="status">Kode akses belum tersedia di lingkungan ini.</p>}
+        </div>
+      </details>}
       {publicHref && <RegistrationQr href={publicHref} title={event.title} />}
     </header>
     {saved === "1" && <p role="status" className="rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm font-medium">Pengaturan disimpan.</p>}

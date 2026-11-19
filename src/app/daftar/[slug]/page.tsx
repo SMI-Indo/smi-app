@@ -1,3 +1,4 @@
+import { splitRegistrationTerms } from "@/lib/registrationTerms";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -26,6 +27,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
     include: { _count: { select: { registrations: true } } },
   }).catch(() => undefined);
   const remaining = event ? remainingSlots(event.capacity, event._count.registrations) : null;
+  const terms = splitRegistrationTerms(event?.registrationTerms ?? "");
   const fields = fieldsSchema.safeParse(event?.registrationFields);
   const open = event && registrationWindowOpen(event.status, event.registrationDeadline, now) && remaining !== 0;
   let accountEmail: string | null | undefined;
@@ -48,6 +50,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
         <h1 className="max-w-3xl wrap-anywhere text-3xl font-bold leading-tight text-on-surface sm:text-5xl">
           {event?.title ?? (slug === "lombanatal" ? "Lomba Natal" : "Pendaftaran acara")}
         </h1>
+        {event && <Link href={"/daftar/" + encodeURIComponent(slug) + "/peserta"} className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-primary underline">Lihat daftar peserta</Link>}
       </header>
       <div className={event ? "grid items-start gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-12" : "max-w-xl"}>
         {event && (
@@ -77,15 +80,25 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
             </dl>
             {open && event.registrationDeadline && <Countdown deadline={event.registrationDeadline.toISOString()} serverNow={now.toISOString()} />}
             {event.description && <p className="whitespace-pre-wrap text-on-surface-variant">{event.description}</p>}
-            {event.registrationTerms && (
+            {terms.text && (
               <div className="border-t border-outline-variant pt-4">
                 <h2 className="font-semibold">Syarat pendaftaran</h2>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-on-surface-variant">{event.registrationTerms}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-on-surface-variant">{terms.text}</p>
               </div>
             )}
           </section>
         )}
         <div className="min-w-0 rounded-xl border border-outline-variant bg-surface-container-lowest p-5 sm:p-7">
+          {terms.links.length > 0 && <section aria-labelledby="event-links" className="mb-6 border-b border-outline-variant pb-4">
+            <h2 id="event-links" className="font-semibold">Tautan kegiatan</h2>
+            <ul className="mt-1 divide-y divide-outline-variant">
+              {terms.links.map(({ label, url }, index) => <li key={index}>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center wrap-anywhere text-sm font-semibold text-primary underline">
+                  {label}<span className="sr-only"> (tab baru)</span>
+                </a>
+              </li>)}
+            </ul>
+          </section>}
           {event === undefined || (open && (!fields.success || identityUnavailable)) ? (
             <section role="alert">
               <h2 className="text-xl font-semibold">Formulir gagal dimuat</h2>

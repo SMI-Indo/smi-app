@@ -1,34 +1,10 @@
 import { prisma } from "@/lib/prisma";
-import {
-  AdminEventsManager,
-  EventData,
-} from "@/components/admin/AdminEventsManager";
+import { scheduleOrder, scheduleSelect, serializeScheduleEvent } from "@/lib/adminSchedule";
+import { AdminEventsManager } from "@/components/admin/AdminEventsManager";
 
-export const revalidate = 0; // Data admin selalu real-time
+export const dynamic = "force-dynamic";
 
 export default async function AdminEventsPage() {
-  let events: EventData[] = [];
-
-  try {
-    const rawEvents = await prisma.event.findMany({
-      orderBy: { date: "asc" },
-    });
-
-    events = rawEvents.map((e) => ({
-      id: e.id,
-      title: e.title,
-      description: e.description,
-      category: e.category,
-      date: e.date.toISOString(),
-      time: e.time,
-      location: e.location,
-      status: e.status,
-      createdAt: e.createdAt.toISOString(),
-      registrationSlug: e.registrationSlug,
-    }));
-  } catch (error) {
-    console.error("Error loading admin events page:", error);
-  }
-
-  return <AdminEventsManager initialEvents={events} />;
+  const events = await prisma.event.findMany({ orderBy: scheduleOrder, select: scheduleSelect });
+  return <AdminEventsManager initialEvents={events.map(serializeScheduleEvent)} />;
 }
