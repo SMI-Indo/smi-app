@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
 import { Prisma } from "@prisma/client";
+import { parseWibDate } from "@/lib/registrationFields";
 
 export const revalidate = 0;
 
@@ -56,13 +57,15 @@ export async function POST(req: NextRequest) {
     }
 
     const { title, description, category, date, time, location, status, registrationSlug } = parsed.data;
+    const eventDate = parseWibDate(date);
+    if (!eventDate) return NextResponse.json({ error: "Tanggal kegiatan tidak valid." }, { status: 400 });
 
     const newEvent = await prisma.event.create({
       data: {
         title: title.trim(),
         description: description ? description.trim() : null,
         category,
-        date: new Date(date),
+        date: eventDate,
         time: time.trim(),
         location: location.trim(),
         status,

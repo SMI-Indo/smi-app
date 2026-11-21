@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "../SettingsForm";
 import { ParticipantControls } from "../ParticipantControls";
 import { RegistrationQr } from "../RegistrationQr";
-import { answersSchema, fieldsSchema, isWebLink } from "@/lib/registrationFields";
+import { answersSchema, fieldsSchema, isWebLink, wibDateTimeInput } from "@/lib/registrationFields";
 import { registrationHref, registrationOrigin } from "@/lib/registrationLinks";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -91,7 +91,7 @@ export default async function EventRegistrationSettingsPage({ params, searchPara
       <h2 id="registration-settings-title" className="mb-5 border-b border-outline-variant pb-4 text-2xl font-semibold">Pengaturan formulir</h2>
       {fields.success ? <SettingsForm event={{
         id: event.id, slug: event.registrationSlug ?? suggestRegistrationSlug(event.title),
-        deadline: event.registrationDeadline ? new Date(event.registrationDeadline.getTime() + 7 * 3600000).toISOString().slice(0, 16) : "",
+        deadline: event.registrationDeadline ? wibDateTimeInput(event.registrationDeadline) : "",
         capacity: event.capacity, terms: event.registrationTerms ?? "", categories: event.registrationCategories.join("\n"),
         fields: fields.data,
       }} /> : <p role="alert" className="text-sm text-error">Konfigurasi kolom gagal dimuat. Hubungi pengelola sistem.</p>}

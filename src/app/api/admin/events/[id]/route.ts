@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
+import { parseWibDate, registrationDeadlineFitsEvent, wibDateInput } from "@/lib/registrationFields";
 
 const updateEventSchema = z.object({
   title: z.string().min(2, "Judul kegiatan wajib diisi minimal 2 karakter").optional(),
@@ -37,23 +38,44 @@ export async function PUT(
     }
 
     const data = parsed.data;
+    const date = data.date === undefined ? undefined : parseWibDate(data.date);
+    if (date === null) return NextResponse.json({ error: "Tanggal kegiatan tidak valid." }, { status: 400 });
 
-    const updated = await prisma.event.update({
-      where: { id },
-      data: {
-        ...(data.title && { title: data.title.trim() }),
-        ...(data.description !== undefined && { description: data.description ? data.description.trim() : null }),
-        ...(data.category && { category: data.category }),
-        ...(data.date && { date: new Date(data.date) }),
-        ...(data.time && { time: data.time.trim() }),
-        ...(data.location && { location: data.location.trim() }),
-        ...(data.status && { status: data.status }),
-      },
-    });
+    const result = await prisma.$transaction(async (tx) => {
+      let changedDate: Date | undefined;
+      if (date) {
+        const current = await tx.event.findUnique({ where: { id }, select: { date: true, registrationDeadline: true } });
+        if (!current) return { error: "Jadwal kegiatan tidak ditemukan.", status: 404 } as const;
+        if (wibDateInput(date) !== wibDateInput(current.date)) {
+          if (current.registrationDeadline && !registrationDeadlineFitsEvent(current.registrationDeadline, date)) {
+            return { error: "Tenggat terdaftar melewati tanggal baru. Ubah tenggat terlebih dahulu.", status: 409 } as const;
+          }
+          changedDate = date;
+        }
+      }
+
+      const event = await tx.event.update({
+        where: { id },
+        data: {
+          ...(data.title && { title: data.title.trim() }),
+          ...(data.description !== undefined && { description: data.description ? data.description.trim() : null }),
+          ...(data.category && { category: data.category }),
+          ...(changedDate && { date: changedDate }),
+          ...(data.time && { time: data.time.trim() }),
+          ...(data.location && { location: data.location.trim() }),
+          ...(data.status && { status: data.status }),
+        },
+      });
+      return { event };
+    }, { isolationLevel: "Serializable" });
+    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
 
     revalidatePath("/admin/events", "layout");
-    return NextResponse.json({ success: true, event: updated }, { status: 200 });
+    return NextResponse.json({ success: true, event: result.event }, { status: 200 });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return NextResponse.json({ error: "Jadwal sedang diperbarui. Muat ulang lalu coba lagi." }, { status: 409 });
+    }
     console.error("Error updating event:", error);
     return NextResponse.json({ error: "Gagal memperbarui jadwal event" }, { status: 500 });
   }

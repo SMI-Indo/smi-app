@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { registrationHref } from "@/lib/registrationLinks";
+import { registrationWindowOpen } from "@/lib/registrationFields";
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -135,7 +136,7 @@ export function EventScheduler({ initialEvents, registrationBase, serverNow = 0 
                   <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
-              {evt.status === "UPCOMING" && evt.registrationSlug && evt.registrationDeadline && new Date(evt.registrationDeadline).getTime() > serverNow && (
+              {evt.registrationSlug && registrationWindowOpen(evt.status, evt.registrationDeadline && new Date(evt.registrationDeadline), new Date(serverNow)) && (
                 <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
                   href={registrationHref(evt.registrationSlug, registrationBase)}>Lihat pendaftaran</Link>
               )}

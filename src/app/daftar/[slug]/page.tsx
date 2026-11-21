@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RegistrationForm } from "./RegistrationForm";
 import { Countdown } from "./Countdown";
-import { fieldsSchema, registrationWindowOpen, remainingSlots } from "@/lib/registrationFields";
+import { fieldsSchema, registrationClosesAt, registrationWindowOpen, remainingSlots } from "@/lib/registrationFields";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +78,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
                 <dd className="mt-1 font-semibold">{remaining === null ? "Tidak dibatasi" : `${remaining} tempat tersisa`}</dd>
               </div>}
             </dl>
-            {open && event.registrationDeadline && <Countdown deadline={event.registrationDeadline.toISOString()} serverNow={now.toISOString()} />}
+            {open && event.registrationDeadline && <Countdown deadline={registrationClosesAt(event.registrationDeadline).toISOString()} serverNow={now.toISOString()} />}
             {event.description && <p className="whitespace-pre-wrap text-on-surface-variant">{event.description}</p>}
             {terms.text && (
               <div className="border-t border-outline-variant pt-4">
@@ -108,7 +108,7 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
             <RegistrationForm slug={slug} categories={event.registrationCategories} fields={fields.data} accountEmail={accountEmail} />
           ) : (
             <section>
-              <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : !event ? "Kegiatan tidak ditemukan" : event.registrationDeadline && event.registrationDeadline <= now ? "Pendaftaran sudah ditutup" : "Pendaftaran belum tersedia"}</h2>
+              <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : !event ? "Kegiatan tidak ditemukan" : event.registrationDeadline && registrationClosesAt(event.registrationDeadline) <= now ? "Pendaftaran sudah ditutup" : "Pendaftaran belum tersedia"}</h2>
               <p className="mt-2 text-sm text-on-surface-variant">
                 {event && remaining === 0 ? "Semua tempat untuk kegiatan ini sudah terisi." : "Periksa daftar acara untuk melihat pendaftaran yang masih dibuka."}
               </p>

@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { registrationHref, registrationOrigin } from "@/lib/registrationLinks";
+import { earliestOpenDeadline } from "@/lib/registrationFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistrationIndex() {
   const origin = registrationOrigin();
   const events = await prisma.event.findMany({
-    where: { status: "UPCOMING", registrationSlug: { not: null }, registrationDeadline: { gt: new Date() } },
+    where: { status: "UPCOMING", registrationSlug: { not: null }, registrationDeadline: { gte: earliestOpenDeadline(new Date()) } },
     include: { _count: { select: { registrations: true } } },
     orderBy: { date: "asc" },
   }).catch(() => null);

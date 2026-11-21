@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminRegistrationHref, suggestRegistrationSlug } from "@/app/admin/events/registration/paths";
+import { wibDateInput } from "@/lib/registrationFields";
 
 export type EventCategory = "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA";
 export type EventStatus = "UPCOMING" | "COMPLETED";
@@ -48,7 +49,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
     title: "",
     description: "",
     category: "TEMU_ONLINE",
-    date: new Date().toISOString().split("T")[0],
+    date: wibDateInput(new Date()),
     time: "19:00 - 21:00 WIB",
     location: "Zoom Meeting & Google Meet SMI",
     status: "UPCOMING",
@@ -79,7 +80,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       title: "",
       description: "",
       category: "TEMU_ONLINE",
-      date: new Date().toISOString().split("T")[0],
+      date: wibDateInput(new Date()),
       time: "19:00 - 21:00 WIB",
       location: "Zoom Cloud Meeting",
       status: "UPCOMING",
@@ -93,7 +94,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       title: event.title,
       description: event.description || "",
       category: event.category,
-      date: new Date(event.date).toISOString().split("T")[0],
+      date: wibDateInput(new Date(event.date)),
       time: event.time,
       location: event.location,
       status: event.status,
