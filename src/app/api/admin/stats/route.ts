@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getPendingMembers } from "@/lib/pendingMembers";
 import { checkAdminSession } from "@/lib/adminAuth";
 
 export const revalidate = 0;
@@ -11,40 +12,24 @@ export async function GET() {
   }
 
   try {
-    const [totalUsers, pendingUsers, activeEvents, totalVideos, totalViolations, recentPending] = await Promise.all([
+    const [totalUsers, activeEvents, totalVideos, totalViolations, pendingMembers] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { isApproved: false } }),
       prisma.event.count({ where: { status: "UPCOMING" } }),
       prisma.video.count(),
       prisma.violationRecord.count(),
-      prisma.user.findMany({
-        where: { isApproved: false },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          name: true,
-          nickname: true,
-          email: true,
-          parish: true,
-          createdAt: true,
-        },
-      }),
+      getPendingMembers(),
     ]);
 
     return NextResponse.json(
       {
         stats: {
           totalUsers,
-          pendingUsers,
+          pendingUsers: pendingMembers.count,
           activeEvents,
           totalVideos,
           totalViolations,
         },
-        recentPending: recentPending.map((u) => ({
-          ...u,
-          createdAt: u.createdAt.toISOString(),
-        })),
+        recentPending: pendingMembers.members,
       },
       { status: 200 }
     );

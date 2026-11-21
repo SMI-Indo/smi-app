@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { hasMemberId } from "@/lib/memberAccess";
 
 export interface PendingMember {
   id: string;
@@ -9,6 +10,7 @@ export interface PendingMember {
   nickname: string | null;
   email: string;
   parish: string | null;
+  memberId: string | null;
   createdAt: string;
 }
 
@@ -162,7 +164,7 @@ export function AdminOverviewClient({
             <span className="text-xs text-on-surface-variant/70">Terdaftar</span>
           </div>
           <div className="mt-3 pt-3 border-t border-outline-variant/40 flex items-center justify-between text-xs">
-            <span className="text-on-surface-variant">Menunggu ACC:</span>
+            <span className="text-on-surface-variant">Akses belum aktif:</span>
             <span className={`font-bold px-2 py-0.5 rounded-full ${stats.pendingUsers > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
               {stats.pendingUsers} akun
             </span>
@@ -248,7 +250,7 @@ export function AdminOverviewClient({
           <div>
             <h2 className="font-headline-md text-primary text-lg sm:text-xl font-bold flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">pending_actions</span>
-              Pendaftar Menunggu Verifikasi (ACC)
+              Anggota dengan Akses Belum Aktif
             </h2>
             <p className="text-xs text-on-surface-variant mt-1">
               Daftar anggota terbaru yang belum diaktifkan kartu identitas digitalnya.
@@ -309,7 +311,11 @@ export function AdminOverviewClient({
                       })}
                     </td>
                     <td className="py-3 pr-2 text-right">
-                      <button
+                      {!hasMemberId(user.memberId) ? (
+                        <Link href="/admin/members" className="text-sm font-semibold text-primary underline">
+                          Isi nomor anggota
+                        </Link>
+                      ) : <button
                         type="button"
                         onClick={() => handleQuickApprove(user)}
                         disabled={approvingId === user.id}
@@ -323,7 +329,7 @@ export function AdminOverviewClient({
                           <span className="material-symbols-outlined text-sm">check</span>
                         )}
                         <span>ACC Sekarang</span>
-                      </button>
+                      </button>}
                     </td>
                   </tr>
                 ))}

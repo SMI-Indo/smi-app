@@ -1,6 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { canAccessMemberFeatures, memberAccessStatus } from "@/lib/memberAccess";
+
+const accessLabels = {
+  ADMIN: "Pengurus",
+  ACTIVE: "Aktif",
+  NOT_APPROVED: "Belum disetujui",
+  MISSING_ID: "Nomor anggota belum diisi",
+};
 
 export interface MemberData {
   id: string;
@@ -91,8 +99,8 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
     if (!matchSearch) return false;
 
-    if (filterTab === "PENDING") return !m.isApproved;
-    if (filterTab === "APPROVED") return m.isApproved;
+    if (filterTab === "PENDING") return !canAccessMemberFeatures(m);
+    if (filterTab === "APPROVED") return memberAccessStatus(m) === "ACTIVE";
     if (filterTab === "ADMIN") return m.role === "ADMIN";
     return true;
   });
@@ -127,11 +135,11 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
       const data = await res.json();
       if (res.ok) {
         setMembers((prev) =>
-          prev.map((m) => (m.id === member.id ? { ...m, isApproved: newApproval } : m))
+          prev.map((m) => (m.id === member.id ? { ...m, ...data.user } : m))
         );
         setMessage({
           type: "success",
-          text: `Status ${member.name || member.email} berhasil diubah menjadi ${newApproval ? "ACC (Aktif)" : "Dinonaktifkan"}.`,
+          text: `Persetujuan ${member.name || member.email} berhasil ${newApproval ? "diberikan" : "dicabut"}.`,
         });
       } else {
         setMessage({ type: "error", text: data.error || "Gagal mengubah status ACC." });
@@ -164,7 +172,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setMembers((prev) => [data.user, ...prev]);
         setMessage({
           type: "success",
-          text: `Anggota baru ${data.user.name} (${data.user.memberId}) berhasil ditambahkan dan dapat langsung login.`,
+          text: `Akun ${data.user.name} berhasil ditambahkan. ${accessLabels[memberAccessStatus(data.user)]}.`,
         });
         setIsCreateOpen(false);
         setCreateForm({
@@ -453,7 +461,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
               [
                 { id: "ALL", label: "Semua" },
                 { id: "APPROVED", label: "Aktif (ACC)" },
-                { id: "PENDING", label: "Menunggu ACC" },
+                { id: "PENDING", label: "Akses belum aktif" },
                 { id: "ADMIN", label: "Pengurus" },
               ] as const
             ).map((tab) => (
@@ -612,21 +620,26 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
                       {/* Status ACC */}
                       <td className="py-3 px-3">
-                        <button
+                        {member.role === "ADMIN" ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold bg-surface-container text-on-surface">
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                            {accessLabels.ADMIN}
+                          </span>
+                        ) : <button
                           type="button"
                           onClick={() => handleToggleApprove(member)}
                           disabled={loadingAction === `approve-${member.id}`}
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold transition-all shadow-sm ${
-                            member.isApproved
+                            canAccessMemberFeatures(member)
                               ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
                               : "bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
                           }`}
                         >
                           <span className="material-symbols-outlined text-sm">
-                            {member.isApproved ? "verified" : "hourglass_top"}
+                            {canAccessMemberFeatures(member) ? "verified" : "hourglass_top"}
                           </span>
-                          <span>{member.isApproved ? "Aktif" : "Menunggu"}</span>
-                        </button>
+                          <span>{accessLabels[memberAccessStatus(member)]}</span>
+                        </button>}
                       </td>
 
                       {/* Tindakan */}
@@ -1047,7 +1060,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-bold focus:border-primary focus:outline-none"
                   >
                     <option value="true">Aktif (Sudah di-ACC)</option>
-                    <option value="false">Pending (Menunggu ACC)</option>
+                    <option value="false">Belum disetujui</option>
                   </select>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { hasMemberId } from "./memberAccess";
 
 export class MemberPolicyError extends Error {}
 export type MemberPatch = Partial<{
@@ -13,7 +14,7 @@ const memberSelection = {
 } as const;
 
 export function validateMemberApproval(role: string, approved: boolean, memberId: string | null | undefined) {
-  if (role === "MEMBER" && approved && !memberId?.trim()) {
+  if (role === "MEMBER" && approved && !hasMemberId(memberId)) {
     throw new MemberPolicyError("Nomor anggota wajib diisi sebelum menyetujui anggota.");
   }
 }

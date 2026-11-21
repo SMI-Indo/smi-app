@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { previewSessionCookie } from "./sessionCookie";
 import { createHash } from "node:crypto";
+import { canAccessMemberFeatures } from "./memberAccess";
 
 function credentialVersion(password: string | null) {
   return createHash("sha256").update(password ?? "oauth-only").digest("hex");
@@ -60,13 +61,8 @@ export const authOptions: AuthOptions = {
           throw new Error("Email atau password salah");
         }
 
-        // Cek status keanggotaan dari Admin (Admin bebas lewat, member wajib isApproved = true dan memiliki memberId)
-        if (user.role !== "ADMIN") {
-          if (!user.isApproved || !user.memberId) {
-            throw new Error(
-              "Akun Anda belum disetujui atau belum memiliki nomor keanggotaan. Silakan hubungi pengurus."
-            );
-          }
+        if (!canAccessMemberFeatures(user)) {
+          throw new Error("Akun Anda belum disetujui atau belum memiliki nomor keanggotaan. Silakan hubungi pengurus.");
         }
 
         return {
@@ -106,7 +102,7 @@ export const authOptions: AuthOptions = {
           return "/login?error=PendingApproval";
         }
 
-        if (existing.role !== "ADMIN" && (!existing.isApproved || !existing.memberId)) {
+        if (!canAccessMemberFeatures(existing)) {
           return "/login?error=PendingApproval";
         }
       }
@@ -133,7 +129,7 @@ export const authOptions: AuthOptions = {
           select: { id: true, email: true, role: true, isApproved: true, memberId: true, password: true },
         }) : null;
         const active = current && token.credentialVersion === credentialVersion(current.password) &&
-          (current.role === "ADMIN" || (current.isApproved && current.memberId));
+          canAccessMemberFeatures(current);
         session.user.id = active ? current.id : "";
         session.user.email = active ? current.email : undefined;
         session.user.role = active ? current.role : "MEMBER";
