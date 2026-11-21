@@ -6,6 +6,7 @@ import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
 import { Prisma } from "@prisma/client";
 import { parseWibDate } from "@/lib/registrationFields";
+import { isVanityRegistrationSlug } from "@/lib/registrationLinks";
 
 export const revalidate = 0;
 
@@ -36,7 +37,7 @@ const eventSchema = z.object({
   location: z.string().min(1, "Lokasi / Tautan kegiatan wajib diisi (contoh: Zoom Meeting)"),
   status: z.enum(["UPCOMING", "COMPLETED"]).default("UPCOMING"),
   registrationSlug: z.string().trim().max(80)
-    .refine((slug) => !slug || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug), "Gunakan huruf kecil, angka, dan tanda hubung untuk nama tautan.")
+    .refine((slug) => !slug || isVanityRegistrationSlug(slug), "Gunakan nama tautan huruf kecil, angka, atau tanda hubung yang tidak dicadangkan.")
     .optional(),
 });
 

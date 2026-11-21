@@ -5,13 +5,14 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import { fieldsSchema, parseWibDeadline, registrationClosesAt, registrationDeadlineFitsEvent } from "@/lib/registrationFields";
+import { isVanityRegistrationSlug, registrationSlugPattern } from "@/lib/registrationLinks";
 import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { adminRegistrationHref } from "./paths";
 
 const settings = z.object({
   eventId: z.string().min(1),
-  slug: z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(80),
+  slug: z.string().trim().regex(registrationSlugPattern).max(80),
   deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
   capacity: z.string().trim().transform((value) => value === "" ? null : Number(value))
     .pipe(z.number().int().min(1).max(100000).nullable()),
@@ -32,8 +33,9 @@ export async function saveRegistrationSettings(_: string, form: FormData): Promi
   if (!date || registrationCategories.some((line) => line.length > 100)) return "Tanggal atau kategori tidak valid.";
   try {
     const error = await prisma.$transaction(async (tx) => {
-      const event = await tx.event.findUnique({ where: { id: eventId }, select: { date: true, registrationDeadline: true } });
+      const event = await tx.event.findUnique({ where: { id: eventId }, select: { date: true, registrationDeadline: true, registrationSlug: true } });
       if (!event) return "Kegiatan tidak ditemukan.";
+      if (slug !== event.registrationSlug && !isVanityRegistrationSlug(slug)) return "Nama tautan dicadangkan. Pilih nama lain.";
       if (event.registrationDeadline?.getTime() !== date.getTime() && registrationClosesAt(date) <= new Date()) {
         return "Pilih tenggat yang masih akan datang.";
       }

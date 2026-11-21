@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { registrationOrigin } from "./src/lib/registrationLinks";
+import { registrationOrigin, vanityRegistrationSource } from "./src/lib/registrationLinks";
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: host ? [{ source: "/", has: host, destination: "/daftar" }] : [],
       afterFiles: [
-        ...(host ? [{ source: "/:slug([a-z0-9]+(?:-[a-z0-9]+)*)", has: host, destination: "/daftar/:slug" }] : []),
         { source: "/daftar-:slug", destination: "/daftar/:slug" },
+        ...(host ? [{ source: vanityRegistrationSource, has: host, destination: "/daftar/:slug" }] : []),
       ],
     };
   },
