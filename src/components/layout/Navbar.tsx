@@ -5,24 +5,44 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import type { NavigationFeature, NavigationRelease } from "@/lib/featureFlags";
 
-export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; previewBetaNavbar: boolean }) {
+const navLinks: { href: string; label: string; icon: string; feature?: NavigationFeature; memberOnly?: boolean }[] = [
+  { href: "/", label: "Beranda", icon: "home" },
+  { href: "/event", label: "Jadwal", icon: "calendar_month", feature: "event" },
+  { href: "/merchandise", label: "Merchandise", icon: "storefront", feature: "merchandise" },
+  { href: "/video", label: "Video", icon: "play_circle", feature: "video" },
+  { href: "/quiz", label: "Kuis", icon: "quiz", feature: "quiz", memberOnly: true },
+  { href: "/coin", label: "Koin", icon: "token", feature: "coin", memberOnly: true },
+  { href: "/membership", label: "Digital ID", icon: "badge", feature: "membership", memberOnly: true },
+];
+
+export function Navbar({ release }: { release: NavigationRelease }) {
   const { data } = useSession();
-  const session = data?.user?.email ? data : null;
+  const session = data?.user?.id ? data : null;
   const pathname = usePathname();
-  const betaPage = previewBetaNavbar && (pathname === "/" || pathname === "/daftar/video-natal");
   const [profileOpen, setProfileOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const visibleLinks = navLinks.filter(({ feature, memberOnly }) =>
+    (feature !== "quiz" || release.showQuiz) && (!memberOnly || session),
+  );
 
-  const navLinks = [
-    { href: "/", label: "Beranda", icon: "home" },
-    { href: "/event", label: "Jadwal", icon: "calendar_month" },
-    { href: "/merchandise", label: "Merchandise", icon: "storefront" },
-    { href: "/video", label: "Video", icon: "play_circle" },
-    ...(showQuiz || betaPage ? [{ href: "/quiz", label: "Kuis", icon: "quiz", protected: true }] : []),
-    { href: "/coin", label: "Koin", icon: "token", protected: true },
-    { href: "/membership", label: "Digital ID", icon: "badge", protected: true },
-  ];
+  function renderLinks(mobile: boolean) {
+    return visibleLinks.map(({ href, label, icon, feature }) => {
+      if (feature && release.comingSoon.includes(feature)) {
+        return <span key={href} className={mobile ? "flex justify-between gap-3 px-4 py-3 text-on-surface-variant" : "flex flex-col items-center px-2 py-2 text-sm text-on-surface-variant"}>
+          <span>{label}</span><span className="text-xs">Coming soon</span>
+        </span>;
+      }
+      const current = pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
+      return <Link key={href} href={href} aria-current={current ? "page" : undefined}
+        onClick={mobile ? () => setIsOpen(false) : undefined}
+        className={`flex items-center focus-visible:outline-2 focus-visible:outline-offset-2 transition-colors ${mobile ? "gap-3 px-4 py-3 rounded-xl font-body-md" : "gap-1.5 px-4 py-2 rounded-full font-label-sm"} ${current ? "bg-primary text-white" : "text-on-surface-variant hover:bg-surface-container hover:text-primary"}`}>
+        <span aria-hidden="true" className="material-symbols-outlined">{icon}</span>
+        <span>{label}</span>
+      </Link>;
+    });
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full bg-surface/80 backdrop-blur-md border-b border-outline-variant">
@@ -42,37 +62,12 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
           <span className="font-headline-md text-primary tracking-tight font-black transition-colors group-hover:text-primary-container">
             SMI
           </span>
-          {betaPage && <span className="text-xs font-semibold text-on-surface-variant">Beta</span>}
+          {release.showBeta && <span className="text-xs font-semibold text-on-surface-variant">Beta</span>}
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => {
-            // Hide protected links if user is not logged in
-            if (link.protected && !session && !betaPage) return null;
-            if (betaPage) return (
-              <span key={link.href} className="flex flex-col items-center px-2 py-2 text-on-surface-variant" aria-label={link.label + ", coming soon"}>
-                <span className="text-sm">{link.label}</span><span className="text-xs">Coming soon</span>
-              </span>
-            );
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-label-sm transition-all ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-primary"
-                }`}
-              >
-                <span className="material-symbols-outlined text-lg leading-none">
-                  {link.icon}
-                </span>
-                <span>{link.label}</span>
-              </Link>
-            );
-          })}
+        <nav aria-label="Navigasi utama" className="hidden md:flex items-center gap-1">
+          {renderLinks(false)}
         </nav>
 
         {/* User Profile / Auth Action */}
@@ -81,7 +76,7 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 p-1 rounded-full hover:bg-surface-container transition-colors focus:outline-none"
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-surface-container transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
                 aria-label="Menu profil"
                 aria-expanded={profileOpen}
                 id="user-profile-menu-button"
@@ -123,14 +118,14 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
                       <span>Portal Pengurus</span>
                     </Link>
                   )}
-                  <Link
+                  {!release.comingSoon.includes("membership") && <Link
                     href="/membership"
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2 px-4 py-2 text-sm text-on-surface hover:bg-surface-container transition-colors"
                   >
-                    <span className="material-symbols-outlined text-lg">badge</span>
+                    <span aria-hidden="true" className="material-symbols-outlined text-lg">badge</span>
                     <span>Digital ID</span>
-                  </Link>
+                  </Link>}
                   <button
                     onClick={() => {
                       setProfileOpen(false);
@@ -169,7 +164,7 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
 
       {/* Mobile Drawer (visible on mobile only) */}
       {isOpen && (
-        <div className="md:hidden bg-surface-container-lowest border-b border-outline-variant py-4 px-4 space-y-2 animate-in slide-in-from-top duration-200">
+        <nav aria-label="Navigasi seluler" className="md:hidden bg-surface-container-lowest border-b border-outline-variant py-4 px-4 space-y-2 motion-safe:animate-in motion-safe:slide-in-from-top duration-200">
           {session?.user?.email && (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-container border border-outline-variant mb-2">
               {session.user?.image ? (
@@ -195,26 +190,7 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
             </div>
           )}
 
-          {navLinks
-            .filter((link) => betaPage || !link.protected || !!session)
-            .map((link) => (
-              betaPage ? <div key={link.href} className="flex items-center justify-between gap-3 px-4 py-3 text-on-surface-variant">
-                <span>{link.label}</span><span className="text-xs">Coming soon</span>
-              </div> :
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl font-body-md ${
-                  pathname === link.href
-                    ? "bg-primary text-white font-bold"
-                    : "text-on-surface-variant hover:bg-surface-container"
-                }`}
-              >
-                <span className="material-symbols-outlined">{link.icon}</span>
-                <span>{link.label}</span>
-              </Link>
-            ))}
+          {renderLinks(true)}
 
           {session?.user?.role === "ADMIN" && (
             <Link
@@ -239,7 +215,7 @@ export function Navbar({ showQuiz, previewBetaNavbar }: { showQuiz: boolean; pre
               <span>Keluar</span>
             </button>
           )}
-        </div>
+        </nav>
       )}
     </header>
   );

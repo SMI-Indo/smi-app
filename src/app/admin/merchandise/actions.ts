@@ -6,6 +6,7 @@ import { checkAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { notifyByEmail } from "@/lib/email";
 import { orderLabels } from "@/lib/merchandise";
+import { recordId } from "@/lib/accountInput";
 
 const productInput = z.object({
   id: z.string(),
@@ -38,11 +39,14 @@ export async function saveVariant(_: string, form: FormData) {
 const transitions: Record<string, string[]> = {
   PENDING: ["PROCESSING", "CANCELLED"], PROCESSING: ["DONE", "CANCELLED"],
 };
-export async function updateOrder(_: string, form: FormData) {
-  if (!await checkAdminSession()) return "Akses khusus pengurus.";
-  const id = form.get("id");
-  const status = form.get("status");
-  if (typeof id !== "string" || typeof status !== "string") return "Pesanan tidak valid.";
+export type OrderUpdateResult = { ok: boolean; message: string };
+const orderUpdateInput = z.object({ id: recordId, status: z.enum(["PROCESSING", "DONE", "CANCELLED"]) });
+
+export async function updateOrder(_: OrderUpdateResult | null, form: FormData): Promise<OrderUpdateResult> {
+  if (!await checkAdminSession()) return { ok: false, message: "Akses khusus pengurus." };
+  const parsed = orderUpdateInput.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, message: "Pesanan tidak valid." };
+  const { id, status } = parsed.data;
   try {
     const order = await prisma.$transaction(async (tx) => {
       const current = await tx.merchandiseOrder.findUnique({ where: { id }, include: { items: true, user: { select: { email: true } } } });
@@ -56,13 +60,13 @@ export async function updateOrder(_: string, form: FormData) {
       }
       return current;
     });
-    if (!order) return "Perubahan status tidak tersedia. Muat ulang halaman.";
+    if (!order) return { ok: false, message: "Perubahan status tidak tersedia. Muat ulang halaman." };
     await notifyByEmail(order.user.email, "order", "Status pesanan merchandise SMI", ["Kode pesanan: " + id, orderLabels[status]]);
     revalidatePath("/admin/merchandise");
     revalidatePath("/merchandise");
     revalidatePath("/merchandise/pesanan");
-    return "Status diperbarui.";
+    return { ok: true, message: "Status diperbarui." };
   } catch {
-    return "Status gagal diperbarui.";
+    return { ok: false, message: "Status gagal diperbarui." };
   }
 }

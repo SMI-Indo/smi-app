@@ -1,9 +1,12 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { adminRegistrationHref, suggestRegistrationSlug } from "@/app/admin/events/registration/paths";
+import { wibDateInput } from "@/lib/registrationFields";
 
 export type EventCategory = "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA";
 export type EventStatus = "UPCOMING" | "COMPLETED";
@@ -48,7 +51,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
     title: "",
     description: "",
     category: "TEMU_ONLINE",
-    date: new Date().toISOString().split("T")[0],
+    date: wibDateInput(new Date()),
     time: "19:00 - 21:00 WIB",
     location: "Zoom Meeting & Google Meet SMI",
     status: "UPCOMING",
@@ -79,7 +82,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       title: "",
       description: "",
       category: "TEMU_ONLINE",
-      date: new Date().toISOString().split("T")[0],
+      date: wibDateInput(new Date()),
       time: "19:00 - 21:00 WIB",
       location: "Zoom Cloud Meeting",
       status: "UPCOMING",
@@ -93,7 +96,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
       title: event.title,
       description: event.description || "",
       category: event.category,
-      date: new Date(event.date).toISOString().split("T")[0],
+      date: wibDateInput(new Date(event.date)),
       time: event.time,
       location: event.location,
       status: event.status,
@@ -117,7 +120,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         body: JSON.stringify(isEdit ? formData : { ...formData, registrationSlug }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         if (isEdit) {
           router.refresh();
@@ -134,7 +137,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         }
         setIsFormOpen(false);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menyimpan jadwal kegiatan." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menyimpan jadwal kegiatan.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -154,7 +157,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         router.refresh();
         setMessage({
@@ -163,7 +166,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         });
         setDeletingEvent(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menghapus jadwal." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menghapus jadwal.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });

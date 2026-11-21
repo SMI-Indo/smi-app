@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyByEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
-import { fieldsSchema, readAnswers, registrationWindowOpen, remainingSlots } from "@/lib/registrationFields";
+import { fieldsSchema, readAnswers, registrationAvailability } from "@/lib/registrationFields";
 
 const input = z.object({
   name: z.string().trim().min(2).max(120),
@@ -25,10 +25,12 @@ export async function register(slug: string, _: RegistrationResult, form: FormDa
     if (!parsed.success) return { error: "Periksa email, nama lengkap, dan asal paroki. Jika sesi berakhir, muat ulang atau masuk kembali." };
     const result = await prisma.$transaction(async (tx) => {
       const event = await tx.event.findUnique({ where: { registrationSlug: slug }, include: { _count: { select: { registrations: true } } } });
-      if (!event || !registrationWindowOpen(event.status, event.registrationDeadline)) {
+      if (!event) {
         return { error: "Pendaftaran telah ditutup atau belum dibuka." } as const;
       }
-      if (remainingSlots(event.capacity, event._count.registrations) === 0) return { error: "Kuota acara sudah penuh." } as const;
+      const availability = registrationAvailability(event.status, event.registrationDeadline, event.capacity, event._count.registrations);
+      if (availability === "full") return { error: "Kuota acara sudah penuh." } as const;
+      if (availability !== "open") return { error: "Pendaftaran telah ditutup atau belum dibuka." } as const;
       const categories = event.registrationCategories;
       if (categories.length ? !categories.includes(parsed.data.category) : parsed.data.category !== "") {
         return { error: "Cabang lomba yang dipilih tidak tersedia." } as const;

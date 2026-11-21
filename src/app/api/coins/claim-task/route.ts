@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError, readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -12,16 +13,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError(401, "Masuk kembali untuk melanjutkan.");
     }
 
-    const body = await req.json();
+    const body = await readJson(req);
     const parsed = claimSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Task ID tidak valid" },
-        { status: 400 }
-      );
+      return apiError(400, parsed.error.issues[0]?.message || "Task ID tidak valid");
     }
 
     const { taskId } = parsed.data;
@@ -31,7 +29,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!task) {
-      return NextResponse.json({ error: "Misi tidak ditemukan" }, { status: 404 });
+      return apiError(404, "Misi tidak ditemukan");
     }
 
     const user = await prisma.user.findUnique({
@@ -40,7 +38,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
+      return apiError(404, "Akun tidak ditemukan.");
     }
 
     const newBalance = await prisma.$transaction(async (tx) => {
@@ -68,12 +66,12 @@ export async function POST(req: NextRequest) {
       return updatedUser.coins;
     }, { isolationLevel: "Serializable" });
 
-    if (newBalance === null) return NextResponse.json({ error: "Misi ini sudah pernah Anda klaim sebelumnya." }, { status: 400 });
+    if (newBalance === null) return apiError(409, "Misi ini sudah pernah Anda klaim sebelumnya.");
     return NextResponse.json({ success: true, newBalance }, { status: 200 });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "P2034") {
-      return NextResponse.json({ error: "Saldo sedang diperbarui. Coba lagi." }, { status: 409 });
+      return apiError(409, "Saldo sedang diperbarui. Coba lagi.");
     }
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return apiError(500, "Misi belum dapat diklaim.");
   }
 }

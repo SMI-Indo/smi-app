@@ -134,8 +134,8 @@ describe("Coins API Endpoints", () => {
     const res = await claimTask(req);
     const body = (await res.json()) as { error: string };
 
-    expect(res.status).toBe(400);
-    expect(body.error).toBe("Misi ini sudah pernah Anda klaim sebelumnya.");
+    expect(res.status).toBe(409);
+    expect(body).toMatchObject({ code: "CONFLICT", error: "Misi ini sudah pernah Anda klaim sebelumnya." });
   });
 
   it("should process POST /redeem-reward successfully if enough balance", async () => {

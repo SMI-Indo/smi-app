@@ -34,19 +34,8 @@ type AuthorizeFn = (
   req: unknown
 ) => Promise<unknown>;
 
-it("blocks Google sign-in for an approved member without a membership ID", async () => {
-  vi.mocked(prisma.user.findUnique).mockResolvedValue({
-    role: "MEMBER",
-    isApproved: true,
-    memberId: null,
-  } as User);
-
-  const result = await authOptions.callbacks!.signIn!({
-    user: { id: "user-1", email: "test@smi.org" },
-    account: { provider: "google", providerAccountId: "google-1", type: "oauth" },
-  });
-
-  expect(result).toBe("/login?error=PendingApproval");
+it("does not expose the Google provider in server authentication", () => {
+  expect(authOptions.providers.map(({ id }) => id)).toEqual(["credentials"]);
 });
 
 describe("NextAuth Credentials authorize provider", () => {
@@ -56,6 +45,20 @@ describe("NextAuth Credentials authorize provider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("normalizes email and forwards a legacy long password without trimming it", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "member-1", email: "member@example.test", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "hash",
+    } as User);
+    mockCompare.mockResolvedValue(true);
+    const authorize = credentialsProvider?.options.authorize as AuthorizeFn;
+    const password = " " + "é".repeat(90) + " ";
+    await expect(authorize({ email: " MEMBER@example.test ", password }, {})).resolves.toMatchObject({ id: "member-1" });
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: "member@example.test" } });
+    expect(mockCompare).toHaveBeenCalledWith(password, "hash");
+    await expect(authorize({ email: "member@example.test", password: "é".repeat(2049) }, {})).rejects.toThrow();
+    expect(mockCompare).toHaveBeenCalledTimes(1);
   });
 
   it("should throw error if credentials email or password is missing", async () => {

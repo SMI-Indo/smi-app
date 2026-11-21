@@ -1,6 +1,17 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+import { newPassword as newPasswordInput, newPasswordByteLimit } from "@/lib/accountInput";
+
 import { useState } from "react";
+import { canAccessMemberFeatures, memberAccessStatus } from "@/lib/memberAccess";
+
+const accessLabels = {
+  ADMIN: "Pengurus",
+  ACTIVE: "Aktif",
+  NOT_APPROVED: "Belum disetujui",
+  MISSING_ID: "Nomor anggota belum diisi",
+};
 
 export interface MemberData {
   id: string;
@@ -91,8 +102,8 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
     if (!matchSearch) return false;
 
-    if (filterTab === "PENDING") return !m.isApproved;
-    if (filterTab === "APPROVED") return m.isApproved;
+    if (filterTab === "PENDING") return !canAccessMemberFeatures(m);
+    if (filterTab === "APPROVED") return memberAccessStatus(m) === "ACTIVE";
     if (filterTab === "ADMIN") return m.role === "ADMIN";
     return true;
   });
@@ -124,17 +135,17 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
-          prev.map((m) => (m.id === member.id ? { ...m, isApproved: newApproval } : m))
+          prev.map((m) => (m.id === member.id ? { ...m, ...data.user } : m))
         );
         setMessage({
           type: "success",
-          text: `Status ${member.name || member.email} berhasil diubah menjadi ${newApproval ? "ACC (Aktif)" : "Dinonaktifkan"}.`,
+          text: `Persetujuan ${member.name || member.email} berhasil ${newApproval ? "diberikan" : "dicabut"}.`,
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mengubah status ACC." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mengubah status ACC.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -146,6 +157,11 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
   // Handle Create Member
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    const password = newPasswordInput.safeParse(createForm.password);
+    if (!password.success) {
+      setMessage({ type: "error", text: password.error.issues[0].message });
+      return;
+    }
     setLoadingAction("create-member");
     setMessage(null);
 
@@ -159,12 +175,12 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) => [data.user, ...prev]);
         setMessage({
           type: "success",
-          text: `Anggota baru ${data.user.name} (${data.user.memberId}) berhasil ditambahkan dan dapat langsung login.`,
+          text: `Akun ${data.user.name} berhasil ditambahkan. ${accessLabels[memberAccessStatus(data.user)]}.`,
         });
         setIsCreateOpen(false);
         setCreateForm({
@@ -181,7 +197,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
           isApproved: true,
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menambahkan anggota baru." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menambahkan anggota baru.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -223,7 +239,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         body: JSON.stringify(editForm),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
           prev.map((m) => (m.id === editingMember.id ? { ...m, ...data.user } : m))
@@ -234,7 +250,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         });
         setEditingMember(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal memperbarui data anggota." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal memperbarui data anggota.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -248,8 +264,9 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     e.preventDefault();
     if (!resetPwMember) return;
 
-    if (newPassword.length < 8) {
-      setMessage({ type: "error", text: "Password minimal harus 6 karakter." });
+    const password = newPasswordInput.safeParse(newPassword);
+    if (!password.success) {
+      setMessage({ type: "error", text: password.error.issues[0].message });
       return;
     }
 
@@ -263,7 +280,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         body: JSON.stringify({ newPassword }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMessage({
           type: "success",
@@ -272,7 +289,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setResetPwMember(null);
         setNewPassword("");
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mereset kata sandi." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mereset kata sandi.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -308,7 +325,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
           prev.map((m) =>
@@ -328,7 +345,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setViolationFollowUp("");
         setViolationSeverity("RINGAN");
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mencatat pelanggaran." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mencatat pelanggaran.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -349,7 +366,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) => prev.filter((m) => m.id !== deletingMember.id));
         setMessage({
@@ -358,7 +375,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         });
         setDeletingMember(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menghapus anggota." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menghapus anggota.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -453,7 +470,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
               [
                 { id: "ALL", label: "Semua" },
                 { id: "APPROVED", label: "Aktif (ACC)" },
-                { id: "PENDING", label: "Menunggu ACC" },
+                { id: "PENDING", label: "Akses belum aktif" },
                 { id: "ADMIN", label: "Pengurus" },
               ] as const
             ).map((tab) => (
@@ -612,21 +629,26 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
                       {/* Status ACC */}
                       <td className="py-3 px-3">
-                        <button
+                        {member.role === "ADMIN" ? (
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold bg-surface-container text-on-surface">
+                            <span aria-hidden="true" className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                            {accessLabels.ADMIN}
+                          </span>
+                        ) : <button
                           type="button"
                           onClick={() => handleToggleApprove(member)}
                           disabled={loadingAction === `approve-${member.id}`}
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-label-lg font-bold transition-all shadow-sm ${
-                            member.isApproved
+                            canAccessMemberFeatures(member)
                               ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
                               : "bg-amber-100 text-amber-800 hover:bg-amber-200 animate-pulse"
                           }`}
                         >
                           <span className="material-symbols-outlined text-sm">
-                            {member.isApproved ? "verified" : "hourglass_top"}
+                            {canAccessMemberFeatures(member) ? "verified" : "hourglass_top"}
                           </span>
-                          <span>{member.isApproved ? "Aktif" : "Menunggu"}</span>
-                        </button>
+                          <span>{accessLabels[memberAccessStatus(member)]}</span>
+                        </button>}
                       </td>
 
                       {/* Tindakan */}
@@ -779,7 +801,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     required
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    placeholder="Minimal 8 karakter" minLength={8}
+                    placeholder="Minimal 8 karakter, maksimal 72 byte" minLength={8} maxLength={newPasswordByteLimit}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -1047,7 +1069,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     className="w-full px-3.5 py-2 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-bold focus:border-primary focus:outline-none"
                   >
                     <option value="true">Aktif (Sudah di-ACC)</option>
-                    <option value="false">Pending (Menunggu ACC)</option>
+                    <option value="false">Belum disetujui</option>
                   </select>
                 </div>
               </div>
@@ -1104,12 +1126,14 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
               <div>
                 <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
-                  Password Baru (Min. 6 Karakter)
+                  Kata sandi baru (minimal 8 karakter, maksimal 72 byte)
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     required
+                    minLength={8}
+                    maxLength={newPasswordByteLimit}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Masukkan password baru..."

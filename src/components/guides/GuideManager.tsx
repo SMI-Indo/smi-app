@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { readApiError } from "@/lib/apiErrorMessage";
 
 type Guide = { id: string; title: string; content: string };
 export function GuideManager({ initialGuides }: { initialGuides: Guide[] }) {
@@ -22,8 +23,8 @@ export function GuideManager({ initialGuides }: { initialGuides: Guide[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: editingId, title, content }),
       });
+      if (!response.ok) throw new Error(await readApiError(response, "Panduan tidak dapat disimpan."));
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
       setGuides((old) => editingId ? old.map((guide) => guide.id === editingId ? result.guide : guide) : [...old, result.guide]);
       setMessage(editingId ? "Perubahan panduan tersimpan." : "Panduan diterbitkan.");
       selectGuide();
@@ -35,7 +36,7 @@ export function GuideManager({ initialGuides }: { initialGuides: Guide[] }) {
     setBusy(true); setMessage("");
     try {
       const response = await fetch("/api/admin/guides", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
-      if (!response.ok) throw new Error("Panduan tidak dapat dihapus.");
+      if (!response.ok) throw new Error(await readApiError(response, "Panduan tidak dapat dihapus."));
       if (id === editingId) selectGuide();
       setGuides((old) => old.filter((guide) => guide.id !== id)); setMessage("Panduan dihapus.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Panduan tidak dapat dihapus."); }

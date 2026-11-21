@@ -46,8 +46,9 @@ it("fails closed when session resolution throws", async () => {
   expect(db.transaction).not.toHaveBeenCalled();
 });
 it("does not create an entry for a closed event", async () => {
-  db.event.findUnique.mockResolvedValue({ status: "COMPLETED" });
-  expect(await register("temu", {}, form("guest@smi.org"))).toHaveProperty("error");
+  const event = await db.event.findUnique();
+  db.event.findUnique.mockResolvedValue({ ...event, status: "COMPLETED" });
+  expect(await register("temu", {}, form("guest@smi.org"))).toEqual({ error: "Pendaftaran telah ditutup atau belum dibuka." });
   expect(db.eventRegistration.create).not.toHaveBeenCalled();
 });
 it("does not create an entry for a full event", async () => {

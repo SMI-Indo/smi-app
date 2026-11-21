@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getPendingMembers } from "@/lib/pendingMembers";
 import {
   AdminOverviewClient,
   AdminStats,
@@ -19,40 +20,24 @@ export default async function AdminOverviewPage() {
   let pending: PendingMember[] = [];
 
   try {
-    const [totalUsers, pendingUsers, activeEvents, totalVideos, totalViolations, rawPending] =
+    const [totalUsers, activeEvents, totalVideos, totalViolations, pendingMembers] =
       await Promise.all([
         prisma.user.count(),
-        prisma.user.count({ where: { isApproved: false } }),
         prisma.event.count({ where: { status: "UPCOMING" } }),
         prisma.video.count(),
         prisma.violationRecord.count(),
-        prisma.user.findMany({
-          where: { isApproved: false },
-          orderBy: { createdAt: "desc" },
-          take: 5,
-          select: {
-            id: true,
-            name: true,
-            nickname: true,
-            email: true,
-            parish: true,
-            createdAt: true,
-          },
-        }),
+        getPendingMembers(),
       ]);
 
     stats = {
       totalUsers,
-      pendingUsers,
+      pendingUsers: pendingMembers.count,
       activeEvents,
       totalVideos,
       totalViolations,
     };
 
-    pending = rawPending.map((p) => ({
-      ...p,
-      createdAt: p.createdAt.toISOString(),
-    }));
+    pending = pendingMembers.members;
   } catch (error) {
     console.error("Error loading admin overview page:", error);
     return <p role="alert">Ringkasan Admin gagal dimuat. Coba muat ulang halaman.</p>;

@@ -3,18 +3,11 @@
 import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
+import { credentialsInput, existingPasswordByteLimit, type CredentialsInput } from "@/lib/accountInput";
 
-const loginSchema = z.object({
-  email: z.string().trim().email({ message: "Format email tidak valid" }),
-  password: z
-    .string()
-    .min(1, { message: "Kata sandi wajib diisi" }),
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
+type LoginFormValues = CredentialsInput;
 const subscribeToLocation = () => () => {};
 const getLocationSearch = () => window.location.search;
 const getServerSearch = () => "";
@@ -37,7 +30,7 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(credentialsInput),
   });
 
   const onSubmit = async (data: LoginFormValues) => {
@@ -140,6 +133,7 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 {...register("password")}
                 autoComplete="current-password"
+                maxLength={existingPasswordByteLimit}
                 disabled={isLoading}
                 className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md focus:outline-none focus:border-primary pr-12 transition-colors"
                 placeholder="••••••••"

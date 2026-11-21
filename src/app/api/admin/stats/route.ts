@@ -1,55 +1,39 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
-import { checkAdminSession } from "@/lib/adminAuth";
+import { getPendingMembers } from "@/lib/pendingMembers";
+import { authorizeAdminApi } from "@/lib/adminAuth";
 
 export const revalidate = 0;
 
 export async function GET() {
-  const auth = await checkAdminSession();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
+  const { error: authError } = await authorizeAdminApi();
+  if (authError) return authError;
 
   try {
-    const [totalUsers, pendingUsers, activeEvents, totalVideos, totalViolations, recentPending] = await Promise.all([
+    const [totalUsers, activeEvents, totalVideos, totalViolations, pendingMembers] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { isApproved: false } }),
       prisma.event.count({ where: { status: "UPCOMING" } }),
       prisma.video.count(),
       prisma.violationRecord.count(),
-      prisma.user.findMany({
-        where: { isApproved: false },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          name: true,
-          nickname: true,
-          email: true,
-          parish: true,
-          createdAt: true,
-        },
-      }),
+      getPendingMembers(),
     ]);
 
     return NextResponse.json(
       {
         stats: {
           totalUsers,
-          pendingUsers,
+          pendingUsers: pendingMembers.count,
           activeEvents,
           totalVideos,
           totalViolations,
         },
-        recentPending: recentPending.map((u) => ({
-          ...u,
-          createdAt: u.createdAt.toISOString(),
-        })),
+        recentPending: pendingMembers.members,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("Error fetching admin stats:", error);
-    return NextResponse.json({ error: "Gagal memuat statistik admin" }, { status: 500 });
+    return apiError(500, "Gagal memuat statistik admin");
   }
 }

@@ -25,13 +25,13 @@ export function ProductForm({ item }: { item?: MerchandiseVariant }) {
 }
 
 export function OrderStatusForm({ id, status }: { id: string; status: string }) {
-  const [message, action, pending] = useActionState(updateOrder, "");
+  const [result, action, pending] = useActionState(updateOrder, null);
   const next = status === "PENDING" ? "PROCESSING" : status === "PROCESSING" ? "DONE" : null;
   if (!next) return null;
   return <form action={action} className="smi-form space-y-2">
     <input type="hidden" name="id" value={id} />
     <label>Status baru<select name="status"><option value={next}>{orderLabels[next]}</option><option value="CANCELLED">{orderLabels.CANCELLED}</option></select></label>
     <button disabled={pending} className="bg-primary text-white rounded-lg px-4 py-2">Perbarui status</button>
-    <p role="status">{message}</p>
+    {result && <p role={result.ok ? "status" : "alert"}>{result.message}</p>}
   </form>;
 }

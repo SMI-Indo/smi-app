@@ -1,26 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
 import { EvidenceError, validateEvidenceFiles, uploadEvidence, removeEvidence, evidenceSchemaReady, type StoredEvidence } from "@/lib/violationEvidence";
 
 const evidenceEnabled = process.env.ENABLE_VIOLATION_EVIDENCE === "true";
 import { notifyByEmail } from "@/lib/email";
 
-async function checkAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return null;
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-    select: { id: true, role: true },
-  });
-  if (user?.role !== "ADMIN") return null;
-  return user;
-}
-
 export async function GET() {
-  const admin = await checkAdmin();
+  const admin = await checkAdminSession();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
   }
@@ -58,7 +46,7 @@ const createViolationSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const admin = await checkAdmin();
+  const admin = await checkAdminSession();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
   }
@@ -94,7 +82,7 @@ export async function POST(req: NextRequest) {
           severity,
           followUp,
           date: new Date(date + "T00:00:00+07:00"),
-          createdById: admin.id,
+          createdById: admin.user.id,
           ...(uploaded.length && { evidence: { create: uploaded } }),
         },
       });
@@ -125,7 +113,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!await checkAdmin()) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });
+  if (!await checkAdminSession()) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });
   const parsed = z.object({
     id: z.string().min(1),
     status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED"]),
@@ -144,7 +132,7 @@ const deleteViolationSchema = z.object({
 });
 
 export async function DELETE(req: NextRequest) {
-  const admin = await checkAdmin();
+  const admin = await checkAdminSession();
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
   }

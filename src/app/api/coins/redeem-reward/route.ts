@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError, readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -12,16 +13,13 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError(401, "Masuk kembali untuk melanjutkan.");
     }
 
-    const body = await req.json();
+    const body = await readJson(req);
     const parsed = redeemSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Reward ID tidak valid" },
-        { status: 400 }
-      );
+      return apiError(400, parsed.error.issues[0]?.message || "Reward ID tidak valid");
     }
 
     const { rewardId } = parsed.data;
@@ -32,7 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 });
+      return apiError(404, "Akun tidak ditemukan.");
     }
 
     // Atomic transaction: verify stock, verify balance, atomic decrement, log tx
@@ -80,22 +78,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, newBalance }, { status: 200 });
   } catch (err) {
     if (err && typeof err === "object" && "code" in err && err.code === "P2034") {
-      return NextResponse.json({ error: "Saldo atau stok sedang diperbarui. Coba lagi." }, { status: 409 });
+      return apiError(409, "Saldo atau stok sedang diperbarui. Coba lagi.");
     }
     if (err instanceof Error) {
       if (err.message === "OUT_OF_STOCK") {
-        return NextResponse.json(
-          { error: "Merchandise tidak tersedia atau habis" },
-          { status: 404 }
-        );
+        return apiError(404, "Merchandise tidak tersedia atau habis");
       }
       if (err.message === "INSUFFICIENT_COINS") {
-        return NextResponse.json(
-          { error: "Saldo koin tidak mencukupi" },
-          { status: 400 }
-        );
+        return apiError(400, "Saldo koin tidak mencukupi");
       }
     }
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return apiError(500, "Hadiah belum dapat ditukar.");
   }
 }
