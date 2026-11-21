@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 import { Navbar } from "@/components/layout/Navbar";
-import { liturgyQuizEnabled, previewBetaNavbarEnabled } from "@/lib/featureFlags";
+import { getNavigationRelease } from "@/lib/featureFlags";
 import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 
@@ -37,7 +37,7 @@ export default function RootLayout({
     <html lang="id">
       <body className="bg-background text-on-background font-sans antialiased min-h-screen flex flex-col">
         <Providers>
-          <Navbar showQuiz={liturgyQuizEnabled} previewBetaNavbar={previewBetaNavbarEnabled} />
+          <Navbar release={getNavigationRelease()} />
           <div className="flex-grow">{children}</div>
           <Footer />
         </Providers>

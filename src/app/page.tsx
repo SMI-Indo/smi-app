@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import Image from "next/image";
+import { getNavigationRelease } from "@/lib/featureFlags";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  const { showQuiz, comingSoon } = getNavigationRelease();
+  const showEvents = !comingSoon.includes("event");
+  const showVideo = !comingSoon.includes("video");
   const [upcomingEvents, featuredVideo] = await Promise.all([
-    prisma.event.findMany({
+    showEvents ? prisma.event.findMany({
       where: { status: "UPCOMING", date: { gte: new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jakarta" }) + "T00:00:00+07:00") } },
       select: { id: true, title: true, category: true, status: true, time: true, date: true },
       orderBy: { date: "asc" },
       take: 2,
-    }).catch(() => null),
-    prisma.video.findFirst({
+    }).catch(() => null) : null,
+    showVideo ? prisma.video.findFirst({
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-    }).catch(() => undefined),
+    }).catch(() => undefined) : null,
   ]);
 
   return (
@@ -35,14 +39,14 @@ export default async function HomePage() {
             <p className="font-body-md text-surface-container-high text-base md:text-lg">
               Sahabat Misdinar Indonesia adalah wadah kebersamaan, pembelajaran liturgi, dan apresiasi komitmen pelayanan Putra-Putri Altar di seluruh Indonesia.
             </p>
-            <div className="flex gap-4">
+            {showEvents && <div className="flex gap-4">
               <Link
                 href="/event"
                 className="bg-primary text-white font-label-lg px-8 py-4 rounded-full hover:bg-primary-container transition-all active:scale-95"
               >
                 Mulai Menjelajah
               </Link>
-            </div>
+            </div>}
           </div>
           {/* Circular Logo on Right (hidden on mobile) */}
           <div className="hidden md:flex w-64 h-64 rounded-full bg-secondary-container/10 border-4 border-secondary-container/45 items-center justify-center backdrop-blur-sm inner-glow animate-pulse">
@@ -66,10 +70,10 @@ export default async function HomePage() {
           <div><h2 className="font-headline-md text-primary">Panduan Liturgis</h2><p className="text-on-surface-variant mt-2">Baca panduan pelayanan yang diterbitkan pengurus SMI.</p></div>
           <Link href="/panduan-liturgis" className="font-bold text-primary underline">Baca panduan</Link>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {(showEvents || showVideo) && <div className={`grid grid-cols-1 gap-8 ${showEvents && showVideo ? "lg:grid-cols-3" : ""}`}>
           
           {/* Left: Schedule Preview (2 Cards) */}
-          <div className="lg:col-span-2 space-y-6">
+          {showEvents && <div className={`space-y-6 ${showVideo ? "lg:col-span-2" : ""}`}>
             <div className="flex items-center justify-between">
               <h2 className="font-headline-md text-primary flex items-center gap-2">
                 <span className="material-symbols-outlined">calendar_month</span>
@@ -112,10 +116,10 @@ export default async function HomePage() {
                 </div>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* Right: Featured Video Card */}
-          <div className="space-y-6">
+          {showVideo && <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-headline-md text-primary flex items-center gap-2">
                 <span className="material-symbols-outlined">play_circle</span>
@@ -166,11 +170,11 @@ export default async function HomePage() {
                 Belum ada video unggulan.
               </div>
             )}
-          </div>
-        </div>
+          </div>}
+        </div>}
 
         {/* 4. Coin Incentive Highlight Banner */}
-        <div className="w-full p-8 md:p-12 rounded-[2rem] bg-gradient-to-r from-primary to-primary-container text-white card-glow flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
+        {!comingSoon.includes("coin") && <div className="w-full p-8 md:p-12 rounded-[2rem] bg-gradient-to-r from-primary to-primary-container text-white card-glow flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative">
           <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-white/5 blur-2xl" />
           <div className="space-y-3 z-10 text-left">
             <span className="font-label-lg bg-white/20 text-white px-4 py-1.5 rounded-full inline-block text-xs">
@@ -180,7 +184,8 @@ export default async function HomePage() {
               Kumpulkan Koin &amp; Klaim Merchandise!
             </h2>
             <p className="font-body-md text-surface-container max-w-xl text-sm md:text-base">
-              Setiap kali Anda menghadiri webinar daring, temu virtual komunitas, atau menyelesaikan kuis liturgi, kumpulkan koin Anda dan tukarkan dengan merchandise resmi SMI.
+              Selesaikan misi untuk mengumpulkan koin dan tukarkan dengan hadiah yang tersedia.
+              {showQuiz && !comingSoon.includes("quiz") && " Kamu juga bisa mendapatkan koin dari Kuis Liturgi."}
             </p>
           </div>
           <Link
@@ -189,7 +194,7 @@ export default async function HomePage() {
           >
             KUMPULKAN SEKARANG
           </Link>
-        </div>
+        </div>}
       </section>
     </main>
   );
