@@ -1,381 +1,252 @@
 "use client";
 
-import { useState } from "react";
-import { EvidencePicker } from "./EvidencePicker";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { severityLabels, violationStatus } from "@/lib/violations";
+import { apiErrorMessage } from "@/lib/apiErrorMessage";
+import { EvidencePicker } from "./EvidencePicker";
 
-export interface ViolationItem {
-  id: string;
-  points: number;
-  reason: string;
-  severity: string;
-  followUp: string | null;
-  status: string;
-  date: string;
+type Member = {
+  id: string; name: string | null; email: string; memberId: string | null;
+  parish: string | null; phoneSuffix: string | null;
+};
+type RecordItem = {
+  id: string; points: number; reason: string; severity: string; status: string;
+  date: string; followUp: string | null; cancellationReason?: string | null;
+  cancelledAt?: string | null; cancelledById?: string | null; user: Member;
   evidence?: { id: string; fileName: string }[];
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    memberId: string | null;
-    violationPoints: number;
-  };
+};
+type History = { violations: RecordItem[]; page: number; totalPages: number; total: number };
+const field = "min-h-11 w-full min-w-0 rounded-md border border-outline bg-surface px-3 py-2";
+const button = "inline-flex min-h-11 items-center justify-center rounded-md border border-outline px-3 py-2 text-sm font-semibold disabled:opacity-50";
+const dateFormat = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
+
+async function request<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...options });
+  if (!response.ok) throw new Error(apiErrorMessage(await response.json().catch(() => null), "Permintaan gagal. Coba lagi."));
+  return response.json();
 }
 
-export interface MemberOption {
-  id: string;
-  name: string | null;
-  email: string;
-  memberId: string | null;
-  violationPoints: number;
-}
-
-interface AdminViolationsClientProps {
-  initialViolations: ViolationItem[];
-  members: MemberOption[];
-  evidenceEnabled?: boolean;
-  loadFailed?: boolean;
-}
-
-export function AdminViolationsClient({
-  initialViolations,
-  members,
-  evidenceEnabled = false,
-  loadFailed = false,
-}: AdminViolationsClientProps) {
-  const [violations, setViolations] = useState<ViolationItem[]>(initialViolations);
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [memberSearch, setMemberSearch] = useState("");
-  const normalizedSearch = memberSearch.trim().toLowerCase();
-  const matchingMembers = members.filter((member) =>
-    member.id === selectedUserId || [member.name, member.email, member.memberId].some(
-      (value) => value?.toLowerCase().includes(normalizedSearch),
-    ),
-  );
-  const [points, setPoints] = useState<number>(5);
-  const [reason, setReason] = useState("");
-  const [severity, setSeverity] = useState("RINGAN");
-  const [followUp, setFollowUp] = useState("");
-  const [date, setDate] = useState("");
+export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEnabled?: boolean }) {
   const [files, setFiles] = useState<File[]>([]);
   const [preparing, setPreparing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [searchError, setSearchError] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<Member | null>(null);
+  const [filters, setFilters] = useState("");
+  const [page, setPage] = useState(1);
+  const [revision, setRevision] = useState(0);
+  const [history, setHistory] = useState<History | null>(null);
+  const [historyError, setHistoryError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  const [cancelId, setCancelId] = useState<string | null>(null);
 
-  const quickReasons = [
-    "Tidak hadir pertemuan online tanpa keterangan",
-    "Terlambat bergabung webinar > 30 menit",
-    "Indisipliner di ruang pertemuan virtual",
-    "Tidak mengumpulkan tugas modul pembinaan daring",
-  ];
+  useEffect(() => {
+    if (!search) return;
+    const abort = new AbortController();
+    request<{ members: Member[] }>("/api/admin/violations/members?" + new URLSearchParams({ q: search }), { signal: abort.signal })
+      .then((data) => { if (!abort.signal.aborted) setMembers(data.members); })
+      .catch((error: Error) => { if (!abort.signal.aborted) setSearchError(error.message); })
+      .finally(() => { if (!abort.signal.aborted) setSearching(false); });
+    return () => abort.abort();
+  }, [search]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading || preparing || loadFailed) return;
-    if (!selectedUserId) {
-      setMessage({ type: "error", text: "Pilih anggota terlebih dahulu." });
-      return;
-    }
-    if (!reason.trim()) {
-      setMessage({ type: "error", text: "Tuliskan alasan pelanggaran." });
-      return;
-    }
+  useEffect(() => {
+    const abort = new AbortController();
+    const params = new URLSearchParams(filters);
+    params.set("page", String(page));
+    request<History>("/api/admin/violations/history?" + params, { signal: abort.signal })
+      .then((data) => { if (!abort.signal.aborted) setHistory(data); })
+      .catch((error: Error) => { if (!abort.signal.aborted) setHistoryError(error.message); })
+      .finally(() => { if (!abort.signal.aborted) setLoading(false); });
+    return () => abort.abort();
+  }, [filters, page, revision]);
 
+  function refresh() {
+    setHistoryError("");
     setLoading(true);
+    setRevision((value) => value + 1);
+  }
+
+  async function save(method: "POST" | "PATCH", data: object) {
+    if (busy || (method === "POST" && preparing)) return false;
+    setBusy(true);
     setMessage(null);
-
     try {
-      const payload = { userId: selectedUserId, points: Number(points), reason: reason.trim(), severity, followUp, date };
-      let body: string | FormData = JSON.stringify(payload);
-      if (files.length) {
-        const form = new FormData(); form.set("data", JSON.stringify(payload));
-        files.forEach((file) => form.append("evidence", file)); body = form;
+      const json = JSON.stringify(data);
+      let options: RequestInit = { method, headers: { "Content-Type": "application/json" }, body: json };
+      if (method === "POST" && evidenceEnabled && files.length) {
+        const form = new FormData();
+        form.set("data", json);
+        files.forEach((file) => form.append("evidence", file));
+        options = { method, body: form };
       }
-      const res = await fetch("/api/admin/violations", {
-        method: "POST", ...(typeof body === "string" && { headers: { "Content-Type": "application/json" } }), body,
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        const targetMember = members.find((m) => m.id === selectedUserId);
-        setViolations((previous) => [data.violation, ...previous]);
-        setFiles([]);
-        setReason("");
-        setFollowUp("");
-        setMessage({
-          type: "success",
-          text: `Poin pelanggaran (+${points}) berhasil dicatat untuk ${targetMember?.name || "anggota"}.`,
-        });
-      } else {
-        setMessage({ type: "error", text: data.error || "Gagal mencatat pelanggaran." });
-      }
-    } catch {
-      setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
+      const result = await request<{ emailSent?: boolean }>("/api/admin/violations", options);
+      setMessage({ text: method === "POST"
+        ? result.emailSent ? "Catatan tersimpan. Email pemberitahuan dikirim." : "Catatan tersimpan. Email pemberitahuan belum terkirim."
+        : "Catatan diperbarui." });
+      refresh();
+      return true;
+    } catch (error) {
+      setMessage({ error: true, text: error instanceof Error ? error.message : "Perubahan gagal disimpan." });
+      return false;
     } finally {
-      setLoading(false);
-    }
-  };
-
-  async function changeStatus(id: string, status: string) {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/admin/violations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status }),
-      });
-      if (!response.ok) throw new Error();
-      setViolations((previous) => previous.map((item) => item.id === id ? { ...item, status } : item));
-      setMessage({ type: "success", text: "Status diperbarui." });
-    } catch {
-      setMessage({ type: "error", text: "Status gagal diperbarui." });
-    } finally {
-      setLoading(false);
+      setBusy(false);
     }
   }
 
-  const handleDelete = async (violationId: string) => {
-    if (!confirm("Apakah Anda yakin ingin membatalkan/menghapus catatan pelanggaran ini?")) {
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/admin/violations", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ violationId }),
-      });
-
-      if (res.ok) {
-        setViolations((prev) => prev.filter((v) => v.id !== violationId));
-        setMessage({ type: "success", text: "Catatan pelanggaran berhasil dihapus dan poin dikurangi." });
-      } else {
-        const data = await res.json();
-        setMessage({ type: "error", text: data.error || "Gagal menghapus pelanggaran." });
-      }
-    } catch {
-      setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
-    }
-  };
-
   return (
-    <div className="space-y-8">
-      {loadFailed && <p role="alert" className="border-l-2 border-error pl-3 text-error">Data belum dapat dimuat. Muat ulang halaman sebelum mencatat pelanggaran.</p>}
-      {/* Header Title */}
-      <div>
-        <h1 className="font-headline-lg text-primary text-2xl md:text-3xl font-bold flex items-center gap-2">
-          <span aria-hidden="true" className="material-symbols-outlined text-3xl text-primary">gavel</span>
-          <span>Pencatatan Poin Pelanggaran</span>
-        </h1>
-        <p className="font-body-md text-on-surface-variant text-sm mt-1">
-          Halaman khusus pengurus untuk menginput poin penalti kedisiplinan pertemuan online anggota Sahabat Misdinar Indonesia.
-        </p>
-      </div>
-
-      {message && (
-        <div
-          className={`p-4 rounded-2xl border text-sm font-body-md flex items-center gap-2 ${
-            message.type === "success"
-              ? "bg-surface-container border-outline-variant text-primary"
-              : "bg-error-container border-error/20 text-error"
-          }`}
-        >
-          <span aria-hidden="true" className="material-symbols-outlined text-lg">
-            {message.type === "success" ? "check_circle" : "error"}
-          </span>
-          <span>{message.text}</span>
-        </div>
-      )}
-
-      {/* Input Form Card */}
-      <div className="p-6 md:p-8 rounded-3xl bg-surface-container-lowest border border-outline-variant card-glow space-y-6">
-        <h2 className="font-headline-md text-primary text-lg font-bold flex items-center gap-2">
-          <span aria-hidden="true" className="material-symbols-outlined">add_circle</span>
-          <span>Form Input Poin Pelanggaran Baru</span>
-        </h2>
-
-        <form onSubmit={handleSubmit} className="smi-form registration-form space-y-5" aria-busy={loading || preparing}>
-          <fieldset disabled={loading || preparing || loadFailed} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Member Selector */}
-            <div className="space-y-1.5">
-              <label className="block">Cari nama, email, atau ID anggota
-                <input type="search" value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)}
-                  className="block w-full min-h-11 rounded-lg border border-outline px-3" />
-              </label>
-              <label htmlFor="violation-member" className="font-label-sm text-on-surface-variant block font-bold">
-                Pilih Anggota SMI
-              </label>
-              <select
-                id="violation-member"
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                disabled={loading}
-                className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md text-sm focus:outline-none focus:border-primary transition-colors cursor-pointer"
-              >
-                <option value="">-- Pilih Anggota yang Melanggar --</option>
-                {matchingMembers.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name || m.email} ({m.memberId || "Belum ada ID"}) - Poin saat ini: {m.violationPoints}
-                  </option>
-                ))}
-              </select>
-              {matchingMembers.length === 0 && <p role="status">Tidak ada anggota yang cocok.</p>}
-            </div>
-
-            {/* Points Selector */}
-            <div className="space-y-1.5">
-              <label className="font-label-sm text-on-surface-variant block font-bold">
-                Jumlah Poin Penalti
-              </label>
-              <div className="flex gap-2">
-                {[5, 10, 15, 20].map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPoints(p)}
-                    className={`flex-1 py-2.5 rounded-xl font-mono text-sm font-bold border cursor-pointer transition-colors ${
-                      points === p
-                        ? "bg-primary text-white border-primary shadow-sm"
-                        : "bg-surface-container border-outline/30 text-on-surface-variant hover:bg-surface-container-high"
-                    }`}
-                  >
-                    +{p}
-                  </button>
-                ))}
-              </div>
-            </div>
+    <section className="mx-auto max-w-4xl space-y-5">
+      <header>
+        <h1 className="text-2xl font-bold text-primary sm:text-3xl">Poin Pelanggaran</h1>
+        <a href="#riwayat" className="inline-flex min-h-11 items-center text-sm underline">Lihat riwayat</a>
+      </header>
+      <section className="space-y-4 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 sm:p-6" aria-labelledby="catat">
+        <h2 id="catat" className="text-xl font-semibold">Catat pelanggaran</h2>
+        <form className="space-y-2" onSubmit={(event) => {
+          event.preventDefault();
+          const value = query.trim();
+          if (!value) return;
+          if (value === search && !searchError) return;
+          setSearchError("");
+          setMembers([]);
+          setSearching(true);
+          setSearch(value === search ? "" : value);
+          if (value === search) setTimeout(() => setSearch(value), 0);
+        }}>
+          <label htmlFor="member-query" className="block font-semibold">Cari anggota</label>
+          <div className="flex flex-wrap gap-2">
+            <input id="member-query" type="search" className={field + " flex-1 basis-48"} value={query} maxLength={100} required
+              placeholder="Nomor HP, nama, email, atau ID" onChange={(event) => setQuery(event.target.value)} />
+            <button className={button} disabled={searching || busy}>Cari</button>
           </div>
-
-          {/* Reason input */}
-          <div className="space-y-1.5">
-            <label className="font-label-sm text-on-surface-variant block font-bold">
-              Alasan Pelanggaran
-            </label>
-            <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              disabled={loading}
-              placeholder="Contoh: Tidak hadir pertemuan online tanpa keterangan..."
-              className="w-full px-4 py-3 rounded-xl border border-outline bg-surface text-on-surface font-body-md text-sm focus:outline-none focus:border-primary transition-colors"
-            />
-            {/* Quick Templates */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-xs text-on-surface-variant/70 self-center">Template cepat:</span>
-              {quickReasons.map((qr, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setReason(qr)}
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-on-surface-variant border border-outline/20 transition-colors cursor-pointer"
-                >
-                  {qr}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="smi-form grid gap-4 sm:grid-cols-2">
-            <label>Tanggal kejadian<input type="date" required value={date} onChange={(event) => setDate(event.target.value)} /></label>
-            <label>Tingkat keparahan<select value={severity} onChange={(event) => setSeverity(event.target.value)}>
-              {Object.entries(severityLabels).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
-            </select></label>
-            <label className="sm:col-span-2">Tindak lanjut<textarea required minLength={3} maxLength={2000} value={followUp} onChange={(event) => setFollowUp(event.target.value)} /></label>
-          </div>
-          {evidenceEnabled && <EvidencePicker files={files} onChange={setFiles} disabled={loading || preparing} onBusyChange={setPreparing} />}
-          <button
-            type="submit"
-            disabled={loading || preparing || loadFailed}
-            className="w-full md:w-auto whitespace-nowrap px-8 py-3 rounded-full bg-primary text-white font-label-lg font-bold hover:bg-primary-container transition-colors active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm flex items-center justify-center gap-2"
-          >
-            {loading || preparing ? (
-              <span>{preparing ? "Menyiapkan gambar…" : files.length ? "Mengunggah dan menyimpan…" : "Menyimpan…"}</span>
-            ) : (
-              <>
-                <span aria-hidden="true" className="material-symbols-outlined text-sm">save</span>
-                <span>Catat Poin Pelanggaran</span>
-              </>
-            )}
-          </button>
-          </fieldset>
         </form>
-      </div>
-
-      {/* History of Violations Table */}
-      <div className="bg-surface-container-lowest rounded-3xl border border-outline-variant overflow-hidden shadow-sm space-y-4 p-6">
-        <h2 className="font-headline-md text-on-surface text-lg font-bold flex items-center gap-2">
-          <span aria-hidden="true" className="material-symbols-outlined text-primary">history</span>
-          <span>Daftar Riwayat Pelanggaran Komunitas</span>
-        </h2>
-
-        <div className="overflow-x-auto">
-          <table className="block w-full text-left text-sm md:table">
-            <thead className="hidden bg-surface-container-low border-b border-outline-variant text-xs text-on-surface-variant md:table-header-group">
-              <tr>
-                <th className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">Tanggal</th>
-                <th className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">Anggota</th>
-                <th className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">Poin Penalti</th>
-                <th className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">Alasan</th>
-                <th className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="block divide-y divide-outline-variant/40 font-body-md md:table-row-group">
-              {violations.length > 0 ? (
-                violations.map((v) => (
-                  <tr key={v.id} className="grid grid-cols-1 py-4 hover:bg-surface-container/40 transition-colors md:table-row md:py-0">
-                    <td className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4 text-xs font-mono text-on-surface-variant">
-                      {new Date(v.date).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </td>
-                    <td className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">
-                      <p className="font-bold text-on-surface">{v.user.name || v.user.email}</p>
-                      <p className="text-xs text-primary font-semibold">
-                        ID: {v.user.memberId || "-"}
-                      </p>
-                    </td>
-                    <td className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-error-container text-error">
-                        +{v.points} Poin
-                      </span>
-                    </td>
-                    <td className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4 text-on-surface text-sm max-w-xs">
-                      <span className={severityLabels[v.severity]?.color + " rounded px-2 py-1"}>{severityLabels[v.severity]?.label}</span>
-                      <p className="mt-2">{v.reason}</p>
-                      {!!v.evidence?.length && <ul className="mt-2 space-y-2">{v.evidence.map((file, index) => <li key={file.id}>
-                        <a href={`/api/admin/violations/${v.id}/evidence/${file.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-primary underline focus-visible:outline-2 focus-visible:outline-offset-4">Buka bukti {index + 1}</a>
-                      </li>)}</ul>}
-                      {v.followUp && <p>Tindak lanjut: {v.followUp}</p>}
-                      <select aria-label={"Status " + v.reason} value={v.status} disabled={loading} onChange={(event) => changeStatus(v.id, event.target.value)}>
-                        {Object.entries(violationStatus).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-                      </select>
-                    </td>
-                    <td className="block py-2 px-2 md:table-cell md:py-3.5 md:px-4 text-right">
-                      <button
-                        onClick={() => handleDelete(v.id)}
-                        className="text-xs font-bold text-error hover:bg-error-container/20 px-3 py-1 rounded-full transition-colors cursor-pointer"
-                        title="Batalkan/Hapus Pelanggaran"
-                      >
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-on-surface-variant">
-                    Belum ada catatan pelanggaran yang diinput.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+        {searching && <p role="status">Mencari anggota…</p>}
+        {searchError && <p role="alert" className="text-error">{searchError}</p>}
+        {search && !searching && !searchError && members.length === 0 && <p role="status" className="text-sm">
+          Anggota tidak ditemukan. Coba nama atau ID, atau periksa nomor di <Link className="underline" href="/admin/members">Manajemen Anggota</Link>.
+        </p>}
+        {!searching && members.length > 0 && <ul className="divide-y divide-outline-variant rounded-md border border-outline-variant">
+          {members.map((member) => <li key={member.id}>
+            <button type="button" disabled={busy} aria-pressed={selected?.id === member.id}
+              className="block min-h-11 w-full break-words px-3 py-2 text-left hover:bg-surface-container aria-pressed:bg-surface-container"
+              onClick={() => setSelected(member)}>
+              <strong>{member.name || member.email}</strong>
+              <span className="block text-sm text-on-surface-variant">
+                {[member.memberId ?? "Tanpa ID", member.parish, member.phoneSuffix && "HP •••• " + member.phoneSuffix].filter(Boolean).join(" · ")}
+              </span>
+            </button>
+          </li>)}
+        </ul>}
+        {selected && <form className="grid gap-4 border-t border-outline-variant pt-4 sm:grid-cols-2" onSubmit={async (event) => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const values = Object.fromEntries(new FormData(form));
+          if (await save("POST", { ...values, userId: selected.id, points: Number(values.points) })) {
+            form.reset();
+            setFiles([]);
+            setSelected(null);
+          }
+        }}>
+          <p className="break-words text-sm sm:col-span-2">Anggota dipilih <strong>{selected.name || selected.email}</strong> · {selected.memberId ?? selected.parish ?? "Tanpa ID"}{selected.phoneSuffix && " · HP •••• " + selected.phoneSuffix}</p>
+          <label>Tanggal kejadian<input name="date" type="date" className={field} required /></label>
+          <label>Tingkat keparahan<select name="severity" className={field}>
+            {Object.entries(severityLabels).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
+          </select></label>
+          <label>Poin<input name="points" type="number" min={1} step={1} defaultValue={5} className={field} required /></label>
+          <label className="sm:col-span-2">Alasan<textarea name="reason" className={field} rows={2} required minLength={3} maxLength={2000} /></label>
+          <label className="sm:col-span-2">Tindak lanjut<textarea name="followUp" className={field} rows={2} required minLength={3} maxLength={2000} /></label>
+          {evidenceEnabled && <div className="sm:col-span-2"><EvidencePicker files={files} onChange={setFiles} onBusyChange={setPreparing} disabled={busy || preparing} /></div>}
+          <button className="registration-submit sm:col-span-2 sm:w-fit" disabled={busy || preparing}>{busy ? "Menyimpan…" : "Catat untuk anggota ini"}</button>
+        </form>}
+      </section>
+      {message && <p role={message.error ? "alert" : "status"} className={"rounded-md border border-outline-variant p-3 " + (message.error ? "text-error" : "")}>{message.text}</p>}
+      <section id="riwayat" className="scroll-mt-24 space-y-4" aria-labelledby="judul-riwayat">
+        <h2 id="judul-riwayat" className="text-xl font-semibold">Riwayat pelanggaran</h2>
+        <form className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          const values = new URLSearchParams();
+          for (const key of ["status", "from", "to"]) {
+            const value = String(data.get(key) || "");
+            if (value) values.set(key, value);
+          }
+          setFilters(values.toString());
+          setPage(1);
+          refresh();
+        }}>
+          <label>Status<select name="status" className={field}><option value="">Semua status</option>
+            {Object.entries(violationStatus).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+          <label>Dari tanggal<input name="from" type="date" className={field} /></label>
+          <label>Sampai tanggal<input name="to" type="date" className={field} /></label>
+          <div className="flex flex-wrap items-end gap-2">
+            <button className={button}>Terapkan filter</button>
+            {selected && <button type="button" className={button} onClick={() => {
+              const next = new URLSearchParams(filters);
+              next.set("memberId", selected.id);
+              setFilters(next.toString()); setPage(1); refresh();
+            }}>Riwayat anggota ini</button>}
+          </div>
+        </form>
+        {new URLSearchParams(filters).has("memberId") && <button className={button} type="button" onClick={() => {
+          const next = new URLSearchParams(filters);
+          next.delete("memberId");
+          setFilters(next.toString()); setPage(1); refresh();
+        }}>Tampilkan semua anggota</button>}
+        {loading ? <p role="status">Memuat riwayat…</p> : historyError ? <p role="alert">{historyError} <button className={button} onClick={refresh}>Coba lagi</button></p>
+          : history?.violations.length === 0 ? <p>{filters ? "Tidak ada catatan yang sesuai dengan filter." : "Belum ada catatan pelanggaran."}</p>
+          : history && <>
+            <p className="text-sm text-on-surface-variant">{history.total} catatan</p>
+            <ul className="space-y-3">{history.violations.map((item) => (
+              <li key={item.id} className="min-w-0 space-y-2 rounded-lg border border-outline-variant bg-surface-container-lowest p-4 wrap-anywhere">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <h3 className="font-semibold">{item.user.name || item.user.email}</h3>
+                  <span className="text-sm">{dateFormat.format(new Date(item.date))}</span>
+                </div>
+                <p className="text-sm">{item.user.memberId ?? "Tanpa ID"} · {item.points} poin · {severityLabels[item.severity]?.label ?? item.severity}</p>
+                <p className="text-sm font-semibold">{violationStatus[item.status] ?? item.status}</p>
+                <p className="whitespace-pre-wrap">{item.reason}</p>
+                {item.followUp && <p className="whitespace-pre-wrap text-sm">Tindak lanjut: {item.followUp}</p>}
+                {evidenceEnabled && !!item.evidence?.length && <ul className="space-y-1 text-sm">{item.evidence.map((file) =>
+                  <li key={file.id}><a className="underline" target="_blank" rel="noopener noreferrer"
+                    href={"/api/admin/violations/" + encodeURIComponent(item.id) + "/evidence/" + encodeURIComponent(file.id)}>{file.fileName}</a></li>
+                )}</ul>}
+                {item.status === "CANCELLED" ? <div className="text-sm">
+                  <p>Alasan pembatalan: {item.cancellationReason}</p>
+                  {item.cancelledAt && <p>Dibatalkan {dateFormat.format(new Date(item.cancelledAt))}</p>}
+                </div> : <div className="space-y-2">
+                  <label className="block max-w-sm text-sm">Ubah status
+                    <select className={field} value={item.status} disabled={busy} onChange={(event) => void save("PATCH", { id: item.id, status: event.target.value })}>
+                      {Object.entries(violationStatus).filter(([value]) => value !== "CANCELLED").map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                  </label>
+                  {cancelId === item.id ? <form className="space-y-2" onSubmit={async (event) => {
+                    event.preventDefault();
+                    const reason = new FormData(event.currentTarget).get("reason");
+                    if (await save("PATCH", { id: item.id, status: "CANCELLED", reason })) setCancelId(null);
+                  }}>
+                    <label className="block">Alasan pembatalan<textarea name="reason" className={field} required minLength={3} maxLength={2000} /></label>
+                    <div className="flex flex-wrap gap-2">
+                      <button disabled={busy} className={button + " text-error"}>Konfirmasi pembatalan</button>
+                      <button disabled={busy} className={button} type="button" onClick={() => setCancelId(null)}>Kembali</button>
+                    </div>
+                  </form> : <button type="button" disabled={busy} className={button + " text-error"} onClick={() => setCancelId(item.id)}>Batalkan catatan</button>}
+                </div>}
+              </li>
+            ))}</ul>
+            {history.totalPages > 1 && <nav aria-label="Halaman riwayat" className="flex flex-wrap items-center gap-3">
+              <button className={button} disabled={history.page <= 1} onClick={() => { setPage(history.page - 1); refresh(); }}>Sebelumnya</button>
+              <span>Halaman {history.page} dari {history.totalPages}</span>
+              <button className={button} disabled={history.page >= history.totalPages} onClick={() => { setPage(history.page + 1); refresh(); }}>Berikutnya</button>
+            </nav>}
+          </>}
+      </section>
+    </section>
   );
 }

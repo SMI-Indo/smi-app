@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkAdminSession } from "@/lib/adminAuth";
 import * as z from "zod";
-import { EvidenceError, validateEvidenceFiles, uploadEvidence, removeEvidence, evidenceSchemaReady, type StoredEvidence } from "@/lib/violationEvidence";
+import { EvidenceError, validateEvidenceFiles, uploadEvidence, removeEvidence, type StoredEvidence } from "@/lib/violationEvidence";
+
+import { notifyByEmail } from "@/lib/email";
 
 const evidenceEnabled = process.env.ENABLE_VIOLATION_EVIDENCE === "true";
-import { notifyByEmail } from "@/lib/email";
 
 export async function GET() {
   const admin = await checkAdminSession();
@@ -100,11 +101,11 @@ export async function POST(req: NextRequest) {
 
     committed = true;
     if (uploaded.length) await prisma.evidenceCleanup.deleteMany({ where: { storagePath: { in: uploaded.map((file) => file.storagePath) } } }).catch(() => console.warn("[evidence] Journal cleanup deferred"));
-    await notifyByEmail(record.user.email, "violation", "Catatan kedisiplinan baru", [
+    const emailSent = await notifyByEmail(record.user.email, "violation", "Catatan kedisiplinan baru", [
       "Ada catatan kedisiplinan yang perlu Anda tinjau.", "Buka halaman Digital ID untuk melihat rincian dan tindak lanjut.",
     ]);
     const evidence = evidenceEnabled ? await prisma.violationEvidence.findMany({ where: { violationId: record.id }, select: { id: true, fileName: true } }).catch(() => []) : [];
-    return NextResponse.json({ success: true, violation: { ...record, evidence } }, { status: 201 });
+    return NextResponse.json({ success: true, violation: { ...record, evidence }, emailSent }, { status: 201 });
   } catch (error) {
     if (!committed) await removeEvidence(uploaded.map((file) => file.storagePath), false).catch(() => console.warn("[evidence] Cleanup needs retry"));
     if (error instanceof EvidenceError) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -113,67 +114,39 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!await checkAdminSession()) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });
+  const admin = await checkAdminSession();
+  if (!admin) return NextResponse.json({ error: "Akses khusus pengurus." }, { status: 403 });
   const parsed = z.object({
     id: z.string().min(1),
-    status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED"]),
+    status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED", "CANCELLED"]),
+    reason: z.string().trim().min(3).max(2000).optional(),
   }).safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Status tidak valid." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Status atau alasan tidak valid." }, { status: 400 });
+  const { id, status, reason } = parsed.data;
+  if (status === "CANCELLED" && !reason) {
+    return NextResponse.json({ error: "Isi alasan pembatalan." }, { status: 400 });
+  }
   try {
-    await prisma.violationRecord.update({ where: { id: parsed.data.id }, data: { status: parsed.data.status } });
-    return NextResponse.json({ success: true });
+    const violation = await prisma.$transaction(async (tx) => {
+      const changed = await tx.violationRecord.updateMany({
+        where: { id, status: { not: "CANCELLED" } },
+        data: status === "CANCELLED"
+          ? { status, cancellationReason: reason, cancelledById: admin.user.id, cancelledAt: new Date() }
+          : { status },
+      });
+      if (changed.count === 0) return null;
+      const record = await tx.violationRecord.findUniqueOrThrow({ where: { id } });
+      if (status === "CANCELLED") {
+        await tx.user.update({
+          where: { id: record.userId },
+          data: { violationPoints: { decrement: record.points } },
+        });
+      }
+      return record;
+    });
+    if (!violation) return NextResponse.json({ error: "Catatan tidak ada atau sudah dibatalkan." }, { status: 409 });
+    return NextResponse.json({ success: true, violation });
   } catch {
     return NextResponse.json({ error: "Status gagal diperbarui." }, { status: 500 });
-  }
-}
-
-const deleteViolationSchema = z.object({
-  violationId: z.string().min(1),
-});
-
-export async function DELETE(req: NextRequest) {
-  const admin = await checkAdminSession();
-  if (!admin) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
-
-  try {
-    const body = await req.json();
-    const parsed = deleteViolationSchema.safeParse(body);
-    if (!parsed.success) {
-      return NextResponse.json({ error: "ID pelanggaran tidak valid" }, { status: 400 });
-    }
-
-    const { violationId } = parsed.data;
-
-    const existing = await prisma.violationRecord.findUnique({
-      where: { id: violationId },
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: "Catatan pelanggaran tidak ditemukan" }, { status: 404 });
-    }
-
-    const hasEvidenceSchema = await evidenceSchemaReady();
-    const paths = await prisma.$transaction(async (tx) => {
-      const evidence = hasEvidenceSchema ? await tx.violationEvidence.findMany({ where: { violationId }, select: { storagePath: true } }) : [];
-      if (evidence.length) await tx.evidenceCleanup.createMany({ data: evidence.map((file) => ({ storagePath: file.storagePath, notBefore: new Date() })), skipDuplicates: true });
-      await tx.violationRecord.delete({
-        where: { id: violationId },
-      });
-
-      await tx.user.update({
-        where: { id: existing.userId },
-        data: {
-          violationPoints: { decrement: existing.points },
-        },
-      });
-      return evidence.map((file) => file.storagePath);
-    });
-
-    await removeEvidence(paths).catch(() => console.warn("[evidence] Cleanup needs retry"));
-    return NextResponse.json({ success: true }, { status: 200 });
-  } catch {
-    return NextResponse.json({ error: "Gagal menghapus catatan pelanggaran" }, { status: 500 });
   }
 }
