@@ -9,7 +9,7 @@ const record = { id: "violation-1", points: 5, reason: "Alasan", severity: "RING
 beforeEach(() => {
   fetchRequest.mockReset();
   fetchRequest.mockImplementation(async (url: string) => {
-    if (url.includes("/members?")) return Response.json({ members: [member] });
+    if (url === "/api/admin/violations/members") return Response.json({ members: [member] });
     return Response.json({ violations: [record], page: url.includes("page=2") ? 2 : 1, totalPages: 2, total: 21 });
   });
   vi.stubGlobal("fetch", fetchRequest);
@@ -35,7 +35,10 @@ it("reports an unavailable history and keeps it retryable", async () => {
 it("searches by membership ID and shows private evidence input only when enabled", async () => {
   const { rerender } = render(<AdminViolationsClient />);
   await selectMember();
-  expect(fetchRequest.mock.calls.some(([url]) => url.includes("/members?q=SMI-1"))).toBe(true);
+  expect(fetchRequest).toHaveBeenCalledWith("/api/admin/violations/members", expect.objectContaining({
+    method: "POST",
+    body: JSON.stringify({ q: "SMI-1" }),
+  }));
   expect(screen.queryByLabelText("Pilih gambar")).not.toBeInTheDocument();
   rerender(<AdminViolationsClient evidenceEnabled />);
   expect(screen.getByLabelText("Pilih gambar")).toHaveAttribute("accept", "image/png,image/jpeg,image/webp");
@@ -51,7 +54,7 @@ it("loads the second page from the API totalPages contract", async () => {
 
 it("clears draft violation details when another member is selected", async () => {
   const otherMember = { ...member, id: "member-2", name: "Yohanes", memberId: "SMI-2" };
-  fetchRequest.mockImplementation(async (url: string) => url.includes("/members?")
+  fetchRequest.mockImplementation(async (url: string) => url === "/api/admin/violations/members"
     ? Response.json({ members: [member, otherMember] })
     : Response.json({ violations: [], page: 1, totalPages: 1, total: 0 }));
   render(<AdminViolationsClient />);

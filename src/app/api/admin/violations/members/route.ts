@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { checkAdminSession } from "@/lib/adminAuth";
+import { readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
 import { withViolationPoints } from "@/lib/violationTotals";
 
@@ -12,12 +14,15 @@ type Member = {
   phone: string | null;
 };
 
-export async function GET(request: Request) {
+const searchInput = z.object({ q: z.string().trim().min(2).max(120) });
+
+export async function POST(request: Request) {
   const headers = { "Cache-Control": "private, no-store" };
   try {
     if (!await checkAdminSession()) return Response.json({ error: "Akses khusus pengurus." }, { status: 403, headers });
-    const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-    if (q.length < 2 || q.length > 120) return Response.json({ members: [] }, { headers });
+    const parsed = searchInput.safeParse(await readJson(request));
+    if (!parsed.success) return Response.json({ members: [] }, { headers });
+    const { q } = parsed.data;
     const isPhone = /^[+\d().\s-]+$/.test(q) && /\d{7}/.test(q.replace(/\D/g, ""));
     const digits = q.replace(/\D/g, "").replace(/^(62|0)/, "");
     const matches = isPhone

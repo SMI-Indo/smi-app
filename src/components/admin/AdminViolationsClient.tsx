@@ -50,7 +50,12 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
   useEffect(() => {
     if (!search) return;
     const abort = new AbortController();
-    request<{ members: Member[] }>("/api/admin/violations/members?" + new URLSearchParams({ q: search }), { signal: abort.signal })
+    request<{ members: Member[] }>("/api/admin/violations/members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q: search }),
+      signal: abort.signal,
+    })
       .then((data) => { if (!abort.signal.aborted) setMembers(data.members); })
       .catch((error: Error) => { if (!abort.signal.aborted) setSearchError(error.message); })
       .finally(() => { if (!abort.signal.aborted) setSearching(false); });
