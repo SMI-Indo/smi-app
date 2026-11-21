@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { PUT } from "./route";
 
 const db = vi.hoisted(() => ({ event: { findUnique: vi.fn(), update: vi.fn() }, transaction: vi.fn() }));
-vi.mock("@/lib/adminAuth", () => ({ checkAdminSession: vi.fn().mockResolvedValue({ user: { id: "admin" } }) }));
+vi.mock("@/lib/adminAuth", () => ({ authorizeAdminApi: vi.fn().mockResolvedValue({ auth: { user: { id: "admin" } } }) }));
 vi.mock("@/lib/prisma", () => ({ prisma: { $transaction: db.transaction } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 

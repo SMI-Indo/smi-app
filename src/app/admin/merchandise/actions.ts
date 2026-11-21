@@ -38,11 +38,13 @@ export async function saveVariant(_: string, form: FormData) {
 const transitions: Record<string, string[]> = {
   PENDING: ["PROCESSING", "CANCELLED"], PROCESSING: ["DONE", "CANCELLED"],
 };
-export async function updateOrder(_: string, form: FormData) {
-  if (!await checkAdminSession()) return "Akses khusus pengurus.";
+export type OrderUpdateResult = { ok: boolean; message: string };
+
+export async function updateOrder(_: OrderUpdateResult | null, form: FormData): Promise<OrderUpdateResult> {
+  if (!await checkAdminSession()) return { ok: false, message: "Akses khusus pengurus." };
   const id = form.get("id");
   const status = form.get("status");
-  if (typeof id !== "string" || typeof status !== "string") return "Pesanan tidak valid.";
+  if (typeof id !== "string" || typeof status !== "string") return { ok: false, message: "Pesanan tidak valid." };
   try {
     const order = await prisma.$transaction(async (tx) => {
       const current = await tx.merchandiseOrder.findUnique({ where: { id }, include: { items: true, user: { select: { email: true } } } });
@@ -56,13 +58,13 @@ export async function updateOrder(_: string, form: FormData) {
       }
       return current;
     });
-    if (!order) return "Perubahan status tidak tersedia. Muat ulang halaman.";
+    if (!order) return { ok: false, message: "Perubahan status tidak tersedia. Muat ulang halaman." };
     await notifyByEmail(order.user.email, "order", "Status pesanan merchandise SMI", ["Kode pesanan: " + id, orderLabels[status]]);
     revalidatePath("/admin/merchandise");
     revalidatePath("/merchandise");
     revalidatePath("/merchandise/pesanan");
-    return "Status diperbarui.";
+    return { ok: true, message: "Status diperbarui." };
   } catch {
-    return "Status gagal diperbarui.";
+    return { ok: false, message: "Status gagal diperbarui." };
   }
 }

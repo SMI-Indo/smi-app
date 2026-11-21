@@ -1,5 +1,7 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+
 import { useState } from "react";
 import Link from "next/link";
 import { hasMemberId } from "@/lib/memberAccess";
@@ -50,7 +52,7 @@ export function AdminOverviewClient({
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setPending((prev) => prev.filter((p) => p.id !== user.id));
         setStats((prev) => ({
@@ -62,7 +64,7 @@ export function AdminOverviewClient({
           text: `Akun ${user.name || user.email} berhasil di-ACC (Status Aktif).`,
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menyetujui akun." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menyetujui akun.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -118,7 +120,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         body: JSON.stringify(isEdit ? formData : { ...formData, registrationSlug }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         if (isEdit) {
           router.refresh();
@@ -135,7 +137,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         }
         setIsFormOpen(false);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menyimpan jadwal kegiatan." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menyimpan jadwal kegiatan.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -155,7 +157,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         router.refresh();
         setMessage({
@@ -164,7 +166,7 @@ export function AdminEventsManager({ initialEvents }: AdminEventsManagerProps) {
         });
         setDeletingEvent(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menghapus jadwal." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menghapus jadwal.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });

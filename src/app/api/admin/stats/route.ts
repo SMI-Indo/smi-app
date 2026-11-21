@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
+import { apiError } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
 import { getPendingMembers } from "@/lib/pendingMembers";
-import { checkAdminSession } from "@/lib/adminAuth";
+import { authorizeAdminApi } from "@/lib/adminAuth";
 
 export const revalidate = 0;
 
 export async function GET() {
-  const auth = await checkAdminSession();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
+  const { error: authError } = await authorizeAdminApi();
+  if (authError) return authError;
 
   try {
     const [totalUsers, activeEvents, totalVideos, totalViolations, pendingMembers] = await Promise.all([
@@ -35,6 +34,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Error fetching admin stats:", error);
-    return NextResponse.json({ error: "Gagal memuat statistik admin" }, { status: 500 });
+    return apiError(500, "Gagal memuat statistik admin");
   }
 }

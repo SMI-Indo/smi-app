@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError, readJson } from "@/lib/apiErrors";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -14,19 +15,19 @@ const input = z.object({
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return NextResponse.json({ error: "Masuk kembali untuk mengganti kata sandi." }, { status: 401 });
-    const parsed = input.safeParse(await request.json().catch(() => null));
-    if (!parsed.success) return NextResponse.json({ error: "Gunakan minimal 8 karakter, maksimal 72 byte, dan konfirmasi yang sama." }, { status: 400 });
+    if (!session?.user?.id) return apiError(401, "Masuk kembali untuk mengganti kata sandi.");
+    const parsed = input.safeParse(await readJson(request));
+    if (!parsed.success) return apiError(400, "Gunakan minimal 8 karakter, maksimal 72 byte, dan konfirmasi yang sama.");
     const current = await prisma.user.findUnique({ where: { id: session.user.id }, select: { password: true } });
-    if (!current?.password) return NextResponse.json({ error: "Akun ini tidak menggunakan kata sandi lokal. Hubungi pengurus." }, { status: 400 });
+    if (!current?.password) return apiError(400, "Akun ini tidak menggunakan kata sandi lokal. Hubungi pengurus.");
     if (!await bcrypt.compare(parsed.data.currentPassword, current.password)) {
-      return NextResponse.json({ error: "Kata sandi saat ini tidak sesuai." }, { status: 400 });
+      return apiError(400, "Kata sandi saat ini tidak sesuai.");
     }
     const password = await bcrypt.hash(parsed.data.newPassword, 12);
     const changed = await prisma.user.updateMany({ where: { id: session.user.id, password: current.password }, data: { password } });
-    if (!changed.count) return NextResponse.json({ error: "Kata sandi telah berubah. Masuk kembali dan coba lagi." }, { status: 409 });
+    if (!changed.count) return apiError(409, "Kata sandi telah berubah. Masuk kembali dan coba lagi.");
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ error: "Kata sandi belum dapat diubah. Coba lagi." }, { status: 500 });
+    return apiError(500, "Kata sandi belum dapat diubah. Coba lagi.");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError, hasDatabaseErrorCode, readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
-import { checkAdminSession } from "@/lib/adminAuth";
+import { authorizeAdminApi } from "@/lib/adminAuth";
 import bcrypt from "bcryptjs";
 import * as z from "zod";
 
@@ -12,21 +13,16 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await checkAdminSession();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
+  const { error: authError } = await authorizeAdminApi();
+  if (authError) return authError;
 
   const { id } = await params;
 
   try {
-    const body = await req.json();
+    const body = await readJson(req);
     const parsed = resetPasswordSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Password tidak valid" },
-        { status: 400 }
-      );
+      return apiError(400, parsed.error.issues[0]?.message || "Password tidak valid");
     }
 
     const hashedPassword = await bcrypt.hash(parsed.data.newPassword, 10);
@@ -43,7 +39,8 @@ export async function POST(
       { status: 200 }
     );
   } catch (error) {
+    if (hasDatabaseErrorCode(error, "P2025")) return apiError(404, "Anggota tidak ditemukan.");
     console.error("Error resetting member password:", error);
-    return NextResponse.json({ error: "Gagal mereset kata sandi anggota" }, { status: 500 });
+    return apiError(500, "Gagal mereset kata sandi anggota");
   }
 }

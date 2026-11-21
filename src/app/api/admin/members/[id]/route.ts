@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiError, readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
-import { checkAdminSession } from "@/lib/adminAuth";
+import { authorizeAdminApi } from "@/lib/adminAuth";
 import * as z from "zod";
 import { updateMemberSafely, deleteMemberSafely, memberMutationError } from "@/lib/memberAdmin";
 
@@ -21,26 +22,21 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await checkAdminSession();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
+  const { auth, error: authError } = await authorizeAdminApi();
+  if (authError) return authError;
 
   const { id } = await params;
 
   try {
-    const body = await req.json();
+    const body = await readJson(req);
     const parsed = updateMemberSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Data input tidak valid" },
-        { status: 400 }
-      );
+      return apiError(400, parsed.error.issues[0]?.message || "Data input tidak valid");
     }
 
     const data = parsed.data;
     if (id === auth.user.id && data.role === "MEMBER") {
-      return NextResponse.json({ error: "Anda tidak dapat menurunkan role akun admin yang sedang digunakan." }, { status: 400 });
+      return apiError(400, "Anda tidak dapat menurunkan role akun admin yang sedang digunakan.");
     }
 
     // Check if email changed and duplicates another user
@@ -49,10 +45,7 @@ export async function PUT(
         where: { email: data.email.toLowerCase().trim() },
       });
       if (existingEmail && existingEmail.id !== id) {
-        return NextResponse.json(
-          { error: `Email ${data.email} sudah terdaftar pada pengguna lain.` },
-          { status: 400 }
-        );
+        return apiError(409, "Email sudah terdaftar pada pengguna lain.");
       }
     }
 
@@ -63,10 +56,7 @@ export async function PUT(
         where: { memberId: trimmedId },
       });
       if (existingMemberId && existingMemberId.id !== id) {
-        return NextResponse.json(
-          { error: `ID Anggota "${trimmedId}" sudah digunakan oleh pengguna lain.` },
-          { status: 400 }
-        );
+        return apiError(409, "Nomor anggota sudah digunakan oleh pengguna lain.");
       }
     }
 
@@ -88,9 +78,9 @@ export async function PUT(
     return NextResponse.json({ success: true, user: updated }, { status: 200 });
   } catch (error) {
     const issue = memberMutationError(error);
-    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
+    if (issue) return apiError(issue.status, issue.message);
     console.error("Error updating member:", error);
-    return NextResponse.json({ error: "Gagal memperbarui data anggota" }, { status: 500 });
+    return apiError(500, "Gagal memperbarui data anggota");
   }
 }
 
@@ -98,19 +88,14 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await checkAdminSession();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized: Akses khusus Admin/Pengurus" }, { status: 403 });
-  }
+  const { auth, error: authError } = await authorizeAdminApi();
+  if (authError) return authError;
 
   const { id } = await params;
 
   // Protect admin from deleting own account
   if (auth.user.id === id) {
-    return NextResponse.json(
-      { error: "Anda tidak dapat menghapus akun admin yang sedang Anda gunakan saat ini." },
-      { status: 400 }
-    );
+    return apiError(400, "Anda tidak dapat menghapus akun admin yang sedang Anda gunakan saat ini.");
   }
 
   try {
@@ -119,8 +104,8 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: "Anggota berhasil dihapus." }, { status: 200 });
   } catch (error) {
     const issue = memberMutationError(error);
-    if (issue) return NextResponse.json({ error: issue.message }, { status: issue.status });
+    if (issue) return apiError(issue.status, issue.message);
     console.error("Error deleting member:", error);
-    return NextResponse.json({ error: "Gagal menghapus anggota dari basis data" }, { status: 500 });
+    return apiError(500, "Gagal menghapus anggota dari basis data");
   }
 }

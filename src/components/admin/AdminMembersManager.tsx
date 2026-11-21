@@ -1,5 +1,7 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+
 import { useState } from "react";
 import { canAccessMemberFeatures, memberAccessStatus } from "@/lib/memberAccess";
 
@@ -132,7 +134,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
           prev.map((m) => (m.id === member.id ? { ...m, ...data.user } : m))
@@ -142,7 +144,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
           text: `Persetujuan ${member.name || member.email} berhasil ${newApproval ? "diberikan" : "dicabut"}.`,
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mengubah status ACC." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mengubah status ACC.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -167,7 +169,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) => [data.user, ...prev]);
         setMessage({
@@ -189,7 +191,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
           isApproved: true,
         });
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menambahkan anggota baru." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menambahkan anggota baru.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -231,7 +233,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         body: JSON.stringify(editForm),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
           prev.map((m) => (m.id === editingMember.id ? { ...m, ...data.user } : m))
@@ -242,7 +244,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         });
         setEditingMember(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal memperbarui data anggota." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal memperbarui data anggota.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -271,7 +273,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         body: JSON.stringify({ newPassword }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMessage({
           type: "success",
@@ -280,7 +282,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setResetPwMember(null);
         setNewPassword("");
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mereset kata sandi." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mereset kata sandi.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -316,7 +318,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         }),
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) =>
           prev.map((m) =>
@@ -336,7 +338,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         setViolationFollowUp("");
         setViolationSeverity("RINGAN");
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal mencatat pelanggaran." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal mencatat pelanggaran.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });
@@ -357,7 +359,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         method: "DELETE",
       });
 
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setMembers((prev) => prev.filter((m) => m.id !== deletingMember.id));
         setMessage({
@@ -366,7 +368,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
         });
         setDeletingMember(null);
       } else {
-        setMessage({ type: "error", text: data.error || "Gagal menghapus anggota." });
+        setMessage({ type: "error", text: apiErrorMessage(data, "Gagal menghapus anggota.") });
       }
     } catch {
       setMessage({ type: "error", text: "Terjadi kesalahan jaringan." });

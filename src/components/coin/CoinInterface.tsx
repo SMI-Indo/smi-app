@@ -1,5 +1,7 @@
 "use client";
 
+import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+
 import { useEffect, useState } from "react";
 import { useCoinStore } from "@/store/useCoinStore";
 
@@ -72,7 +74,7 @@ export function CoinInterface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId }),
       });
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setClaimStatus("Klaim berhasil! Koin bertambah.");
         const task = tasks.find((t) => t.id === taskId);
@@ -84,7 +86,7 @@ export function CoinInterface({
           createdAt: new Date().toISOString(),
         });
       } else {
-        setClaimStatus(data.error || "Gagal klaim koin.");
+        setClaimStatus(apiErrorMessage(data, "Gagal klaim koin."));
       }
     } catch {
       setClaimStatus("Koneksi terganggu.");
@@ -103,7 +105,7 @@ export function CoinInterface({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rewardId: selectedReward.id }),
       });
-      const data = await res.json();
+      const data = await readApiBody(res);
       if (res.ok) {
         setClaimStatus(`Klaim ${selectedReward.title} berhasil diproses!`);
         addTransaction({
@@ -115,7 +117,7 @@ export function CoinInterface({
         });
         setSelectedReward(null);
       } else {
-        setClaimStatus(data.error || "Gagal menukarkan koin.");
+        setClaimStatus(apiErrorMessage(data, "Gagal menukarkan koin."));
       }
     } catch {
       setClaimStatus("Koneksi terganggu.");

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
+import { readApiError } from "@/lib/apiErrorMessage";
 
 export function PasswordForm() {
   const [pending, setPending] = useState(false);
@@ -15,8 +16,7 @@ export function PasswordForm() {
     setPending(true); setError("");
     try {
       const response = await fetch("/api/account/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      const result = await response.json();
-      if (!response.ok) { setError(result.error || "Kata sandi belum tersimpan."); return; }
+      if (!response.ok) { setError(await readApiError(response, "Kata sandi belum tersimpan.")); return; }
       form.reset(); setSaved(true);
       await signOut({ callbackUrl: "/login" });
     } catch { setError("Koneksi terganggu. Jika kata sandi sudah tersimpan, masuk kembali menggunakan kata sandi baru."); }
