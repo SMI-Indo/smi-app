@@ -16,7 +16,7 @@ Gunakan NEXTAUTH_URL=http://localhost:3000 untuk pengembangan lokal. Buat NEXTAU
 
 - main untuk preview dan master untuk production. Periksa database dan konfigurasi setiap lingkungan secara terpisah. Promosikan fitur setelah verifikasi di preview.
 - Isi RESEND_API_KEY dan EMAIL_FROM (alamat pengirim terverifikasi) untuk email. Tanpa konfigurasi ini transaksi tetap tersimpan.
-- Login Google tetap nonaktif di antarmuka. Kuis Liturgi default nonaktif dan dikendalikan oleh ENABLE_LITURGY_QUIZ.
+- Login Google nonaktif. Kuis Liturgi default nonaktif dan dikendalikan oleh ENABLE_LITURGY_QUIZ.
 - PREVIEW_BETA_NAVBAR default nonaktif dan hanya berpengaruh di lingkungan Vercel preview.
 - REGISTRATION_HOST opsional. Isi dengan hostname daftar.<domain> tanpa protokol atau path setelah DNS dan proyek Vercel dikonfigurasi. URL /daftar/<slug> dan /daftar-<slug> tetap tersedia. REGISTRATION_VIEW_SECRET opsional untuk kode daftar peserta dan memakai NEXTAUTH_SECRET sebagai fallback.
 

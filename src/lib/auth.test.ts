@@ -34,19 +34,8 @@ type AuthorizeFn = (
   req: unknown
 ) => Promise<unknown>;
 
-it("blocks Google sign-in for an approved member without a membership ID", async () => {
-  vi.mocked(prisma.user.findUnique).mockResolvedValue({
-    role: "MEMBER",
-    isApproved: true,
-    memberId: null,
-  } as User);
-
-  const result = await authOptions.callbacks!.signIn!({
-    user: { id: "user-1", email: "test@smi.org" },
-    account: { provider: "google", providerAccountId: "google-1", type: "oauth" },
-  });
-
-  expect(result).toBe("/login?error=PendingApproval");
+it("does not expose the Google provider in server authentication", () => {
+  expect(authOptions.providers.map(({ id }) => id)).toEqual(["credentials"]);
 });
 
 describe("NextAuth Credentials authorize provider", () => {

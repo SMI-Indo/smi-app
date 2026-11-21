@@ -1,7 +1,6 @@
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { previewSessionCookie } from "./sessionCookie";
@@ -18,21 +17,6 @@ export const authOptions: AuthOptions = {
   ...(sessionToken && { cookies: { sessionToken } }),
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          role: "MEMBER",
-          isApproved: false, // Default belum di-ACC
-          coins: 0,
-        };
-      },
-    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -81,33 +65,6 @@ export const authOptions: AuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === "google" && user.email) {
-        const existing = await prisma.user.findUnique({
-          where: { email: user.email },
-        });
-
-        if (!existing) {
-          // Buat akun baru berstatus pending approval
-          await prisma.user.create({
-            data: {
-              email: user.email,
-              name: user.name || "Anggota Baru",
-              image: user.image,
-              role: "MEMBER",
-              isApproved: false,
-              coins: 0,
-            },
-          });
-          return "/login?error=PendingApproval";
-        }
-
-        if (!canAccessMemberFeatures(existing)) {
-          return "/login?error=PendingApproval";
-        }
-      }
-      return true;
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
