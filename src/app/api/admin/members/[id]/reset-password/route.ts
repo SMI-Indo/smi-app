@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { authorizeAdminApi } from "@/lib/adminAuth";
 import bcrypt from "bcryptjs";
 import * as z from "zod";
+import { newPassword, recordId } from "@/lib/accountInput";
 
 const resetPasswordSchema = z.object({
-  newPassword: z.string().min(8, "Kata sandi minimal 8 karakter"),
+  newPassword,
 });
 
 export async function POST(
@@ -16,7 +17,9 @@ export async function POST(
   const { error: authError } = await authorizeAdminApi();
   if (authError) return authError;
 
-  const { id } = await params;
+  const parsedId = recordId.safeParse((await params).id);
+  if (!parsedId.success) return apiError(400, "ID anggota tidak valid.");
+  const id = parsedId.data;
 
   try {
     const body = await readJson(req);

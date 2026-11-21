@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { readApiError } from "@/lib/apiErrorMessage";
+import { existingPasswordByteLimit, newPasswordByteLimit } from "@/lib/accountInput";
 
 export function PasswordForm() {
   const [pending, setPending] = useState(false);
@@ -24,10 +25,10 @@ export function PasswordForm() {
   }
   return <form onSubmit={submit} className="smi-form registration-form space-y-5" aria-busy={pending}>
     <fieldset disabled={pending || saved} className="space-y-5">
-      <label>Kata sandi saat ini<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={128} /></label>
-      <label>Kata sandi baru<input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={72} aria-describedby="password-help" /></label>
+      <label>Kata sandi saat ini<input name="currentPassword" type="password" autoComplete="current-password" required maxLength={existingPasswordByteLimit} /></label>
+      <label>Kata sandi baru<input name="newPassword" type="password" autoComplete="new-password" required minLength={8} maxLength={newPasswordByteLimit} aria-describedby="password-help" /></label>
       <p id="password-help" className="text-sm text-on-surface-variant">Gunakan minimal 8 karakter yang tidak digunakan di akun lain. Batas 72 byte; emoji dan huruf tertentu memakai lebih dari satu byte.</p>
-      <label>Ulangi kata sandi baru<input name="confirmation" type="password" autoComplete="new-password" required minLength={8} maxLength={72} /></label>
+      <label>Ulangi kata sandi baru<input name="confirmation" type="password" autoComplete="new-password" required minLength={8} maxLength={newPasswordByteLimit} /></label>
       <button className="registration-submit w-full focus-visible:outline-2 focus-visible:outline-offset-4 active:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed" type="submit">{pending ? "Menyimpan…" : "Simpan kata sandi"}</button>
     </fieldset>
     {error && <p role="alert" className="text-error">{error}</p>}

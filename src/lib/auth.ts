@@ -6,6 +6,7 @@ import { prisma } from "./prisma";
 import { previewSessionCookie } from "./sessionCookie";
 import { createHash } from "node:crypto";
 import { canAccessMemberFeatures } from "./memberAccess";
+import { credentialsInput } from "./accountInput";
 
 function credentialVersion(password: string | null) {
   return createHash("sha256").update(password ?? "oauth-only").digest("hex");
@@ -24,12 +25,13 @@ export const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        const parsed = credentialsInput.safeParse(credentials);
+        if (!parsed.success) {
           throw new Error("Email dan password wajib diisi");
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.trim().toLowerCase() },
+          where: { email: parsed.data.email },
         });
 
         if (!user || !user.password) {
@@ -37,7 +39,7 @@ export const authOptions: AuthOptions = {
         }
 
         const isValidPassword = await bcrypt.compare(
-          credentials.password,
+          parsed.data.password,
           user.password
         );
 

@@ -47,6 +47,20 @@ describe("NextAuth Credentials authorize provider", () => {
     vi.clearAllMocks();
   });
 
+  it("normalizes email and forwards a legacy long password without trimming it", async () => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "member-1", email: "member@example.test", role: "MEMBER", isApproved: true, memberId: "SMI-1", password: "hash",
+    } as User);
+    mockCompare.mockResolvedValue(true);
+    const authorize = credentialsProvider?.options.authorize as AuthorizeFn;
+    const password = " " + "é".repeat(90) + " ";
+    await expect(authorize({ email: " MEMBER@example.test ", password }, {})).resolves.toMatchObject({ id: "member-1" });
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { email: "member@example.test" } });
+    expect(mockCompare).toHaveBeenCalledWith(password, "hash");
+    await expect(authorize({ email: "member@example.test", password: "é".repeat(2049) }, {})).rejects.toThrow();
+    expect(mockCompare).toHaveBeenCalledTimes(1);
+  });
+
   it("should throw error if credentials email or password is missing", async () => {
     if (!credentialsProvider || !("options" in credentialsProvider)) {
       throw new Error("Credentials provider options not found");

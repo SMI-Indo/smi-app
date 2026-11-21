@@ -5,11 +5,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { existingPassword, newPassword } from "@/lib/accountInput";
 
 const input = z.object({
-  currentPassword: z.string().min(1).max(128),
-  newPassword: z.string().min(8).max(72).refine((value) => Buffer.byteLength(value, "utf8") <= 72),
-  confirmation: z.string(),
+  currentPassword: existingPassword,
+  newPassword,
+  confirmation: z.string().max(72),
 }).refine((data) => data.newPassword === data.confirmation);
 
 export async function POST(request: NextRequest) {

@@ -6,6 +6,7 @@ import { checkAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 import { notifyByEmail } from "@/lib/email";
 import { orderLabels } from "@/lib/merchandise";
+import { recordId } from "@/lib/accountInput";
 
 const productInput = z.object({
   id: z.string(),
@@ -39,12 +40,13 @@ const transitions: Record<string, string[]> = {
   PENDING: ["PROCESSING", "CANCELLED"], PROCESSING: ["DONE", "CANCELLED"],
 };
 export type OrderUpdateResult = { ok: boolean; message: string };
+const orderUpdateInput = z.object({ id: recordId, status: z.enum(["PROCESSING", "DONE", "CANCELLED"]) });
 
 export async function updateOrder(_: OrderUpdateResult | null, form: FormData): Promise<OrderUpdateResult> {
   if (!await checkAdminSession()) return { ok: false, message: "Akses khusus pengurus." };
-  const id = form.get("id");
-  const status = form.get("status");
-  if (typeof id !== "string" || typeof status !== "string") return { ok: false, message: "Pesanan tidak valid." };
+  const parsed = orderUpdateInput.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { ok: false, message: "Pesanan tidak valid." };
+  const { id, status } = parsed.data;
   try {
     const order = await prisma.$transaction(async (tx) => {
       const current = await tx.merchandiseOrder.findUnique({ where: { id }, include: { items: true, user: { select: { email: true } } } });

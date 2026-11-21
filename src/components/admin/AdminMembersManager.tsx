@@ -1,6 +1,7 @@
 "use client";
 
 import { apiErrorMessage, readApiBody } from "@/lib/apiErrorMessage";
+import { newPassword as newPasswordInput, newPasswordByteLimit } from "@/lib/accountInput";
 
 import { useState } from "react";
 import { canAccessMemberFeatures, memberAccessStatus } from "@/lib/memberAccess";
@@ -156,6 +157,11 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
   // Handle Create Member
   const handleCreateMember = async (e: React.FormEvent) => {
     e.preventDefault();
+    const password = newPasswordInput.safeParse(createForm.password);
+    if (!password.success) {
+      setMessage({ type: "error", text: password.error.issues[0].message });
+      return;
+    }
     setLoadingAction("create-member");
     setMessage(null);
 
@@ -258,8 +264,9 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
     e.preventDefault();
     if (!resetPwMember) return;
 
-    if (newPassword.length < 8) {
-      setMessage({ type: "error", text: "Password minimal harus 6 karakter." });
+    const password = newPasswordInput.safeParse(newPassword);
+    if (!password.success) {
+      setMessage({ type: "error", text: password.error.issues[0].message });
       return;
     }
 
@@ -794,7 +801,7 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
                     required
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                    placeholder="Minimal 8 karakter" minLength={8}
+                    placeholder="Minimal 8 karakter, maksimal 72 byte" minLength={8} maxLength={newPasswordByteLimit}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant bg-surface text-on-surface text-sm font-mono focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -1119,12 +1126,14 @@ export function AdminMembersManager({ initialMembers }: AdminMembersManagerProps
 
               <div>
                 <label className="text-xs font-label-lg text-on-surface-variant block mb-1">
-                  Password Baru (Min. 6 Karakter)
+                  Kata sandi baru (minimal 8 karakter, maksimal 72 byte)
                 </label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     required
+                    minLength={8}
+                    maxLength={newPasswordByteLimit}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Masukkan password baru..."
