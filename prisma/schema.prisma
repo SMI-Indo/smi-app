@@ -69,6 +69,9 @@ model ViolationRecord {
   severity String @default("RINGAN")
   followUp String?
   status String @default("OPEN")
+  cancellationReason String?
+  cancelledById String?
+  cancelledAt DateTime?
   id          String   @id @default(cuid())
   userId      String
   points      Int      // Jumlah poin pelanggaran (+5, +10, dsb.)

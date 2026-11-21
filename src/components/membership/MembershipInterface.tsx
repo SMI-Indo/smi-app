@@ -4,14 +4,13 @@ import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import Image from "next/image";
 import { QRCodeSVG } from "qrcode.react";
-import { severityLabels, violationStatus } from "@/lib/violations";
+import { cancelledViolationStatus, isActiveViolation, severityLabels, violationStatus } from "@/lib/violations";
 
 export interface UserViolationRecord {
   id: string;
   points: number;
   reason: string;
   severity: string;
-  followUp: string | null;
   status: string;
   date: string;
 }
@@ -81,33 +80,25 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
         label: "Disiplin Baik",
         color: "bg-green-100 text-green-800 border-green-200",
         icon: "check_circle",
-        description: "Tidak ada catatan pelanggaran. Terus pertahankan keaktifan Anda!",
-      };
-    }
-    if (points <= 10) {
-      return {
-        label: "Peringatan Ringan",
-        color: "bg-amber-100 text-amber-800 border-amber-200",
-        icon: "warning",
-        description: "Terdapat beberapa catatan penalti kehadiran atau ketertiban online.",
+        description: "Saat ini tidak ada poin pelanggaran yang berlaku.",
       };
     }
     return {
-      label: "Perlu Evaluasi Pengurus",
-      color: "bg-red-100 text-red-800 border-red-200",
-      icon: "error",
-      description: "Poin penalti melebihi batas toleransi. Hubungi admin untuk konfirmasi.",
+      label: "Poin pelanggaran tercatat",
+      color: "bg-amber-100 text-amber-800 border-amber-200",
+      icon: "info",
+      description: "Hubungi pengurus jika ada catatan yang perlu ditinjau.",
     };
   };
 
   const discipline = getDisciplineStatus(profile.violationPoints);
-  const activeViolations = profile.violations.filter((item) => item.status !== "RESOLVED").length;
+  const activeViolations = profile.violations.filter((item) => isActiveViolation(item.status)).length;
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
       {activeViolations > 0 && <aside className="rounded-xl border border-red-300 bg-red-50 p-4 text-red-950">
         <p className="font-bold">{activeViolations} catatan pelanggaran perlu perhatian</p>
-        <a href="#catatan-pelanggaran" className="underline">Baca rincian dan tindak lanjut</a>
+        <a href="#catatan-pelanggaran" className="underline">Baca rincian catatan</a>
       </aside>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         {/* Left: Digital ID Card Container */}
@@ -275,7 +266,10 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
             {profile.violations.map((v) => (
               <div key={v.id} className="py-3 flex items-center justify-between gap-4">
                 <div className="min-w-0 space-y-1 break-words">
-                  <p className="text-xs"><span className={severityLabels[v.severity]?.color + " rounded px-2 py-1"}>{severityLabels[v.severity]?.label}</span> · {violationStatus[v.status]}</p>
+                  <p className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className={`rounded px-2 py-1 ${severityLabels[v.severity]?.color ?? ""}`}>{severityLabels[v.severity]?.label ?? v.severity}</span>
+                    <span>{violationStatus[v.status] ?? v.status}</span>
+                  </p>
                   <p className="font-body-md text-sm font-semibold text-on-surface">{v.reason}</p>
                   <p className="text-xs font-mono text-on-surface-variant">
                     {new Date(v.date).toLocaleDateString("id-ID", {
@@ -285,11 +279,10 @@ export function MembershipInterface({ profile }: { profile: UserProfile }) {
                       timeZone: "Asia/Jakarta",
                     })}
                   </p>
-                  <p className="text-sm"><strong>Tindak lanjut:</strong> {v.followUp ?? "Hubungi pengurus untuk arahan."}</p>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-red-100 text-red-800 shrink-0">
+                {v.status !== cancelledViolationStatus && <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-red-100 text-red-800 shrink-0">
                   +{v.points} Poin
-                </span>
+                </span>}
               </div>
             ))}
           </div>

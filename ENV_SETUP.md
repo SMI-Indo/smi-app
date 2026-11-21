@@ -20,6 +20,10 @@ Gunakan NEXTAUTH_URL=http://localhost:3000 untuk pengembangan lokal. Buat NEXTAU
 - Badge Beta tampil di Vercel production. PREVIEW_BETA_NAVBAR=true menampilkannya di preview. NAV_COMING_SOON berisi daftar fitur yang belum siap, dipisahkan koma. Pilihan yang tersedia adalah event, merchandise, video, quiz, coin, dan membership. Flag ini mengatur tampilan menu dan promosi beranda. Akses rute tetap mengikuti aturan server masing-masing.
 - REGISTRATION_HOST opsional. Isi dengan hostname daftar.<domain> tanpa protokol atau path setelah DNS dan proyek Vercel dikonfigurasi. URL /daftar/<slug> dan /daftar-<slug> tetap tersedia. REGISTRATION_VIEW_SECRET opsional untuk kode daftar peserta dan memakai NEXTAUTH_SECRET sebagai fallback.
 
+## Pembatalan pelanggaran
+
+Sebelum merilis alur pembatalan, periksa kolom `cancellationReason`, `cancelledById`, dan `cancelledAt` pada tabel `ViolationRecord`. Uji `prisma/sql/20261114_violation_cancellation.sql` di salinan dev jika ketiga kolom belum ada, lalu verifikasi pencatatan, riwayat, dan dua permintaan pembatalan bersamaan. Kolom ini diperlukan untuk riwayat pengurus meski fitur bukti privat masih nonaktif.
+
 ## Bukti pelanggaran privat
 
 Fitur default nonaktif. Uji menggunakan database dan Storage preview sebelum menyetel ENABLE_VIOLATION_EVIDENCE=true.

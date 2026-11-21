@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { withViolationPoints } from "@/lib/violationTotals";
 import {
   AdminMembersManager,
   MemberData,
@@ -24,12 +25,11 @@ export default async function AdminMembersPage() {
         parish: true,
         rank: true,
         coins: true,
-        violationPoints: true,
         createdAt: true,
       },
     });
 
-    members = rawUsers.map((u) => ({
+    members = (await withViolationPoints(prisma, rawUsers)).map((u) => ({
       ...u,
       role: u.role as "MEMBER" | "ADMIN",
       createdAt: u.createdAt.toISOString(),

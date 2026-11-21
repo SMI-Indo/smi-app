@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { countViolationPoints } from "@/lib/violations";
 import { MembershipInterface, UserProfile } from "@/components/membership/MembershipInterface";
 
 export const revalidate = 0; // Membutuhkan data profil real-time
@@ -13,7 +14,7 @@ function isCardExpired(validUntil: Date | null) {
 
 export default async function MembershipPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -22,10 +23,11 @@ export default async function MembershipPage() {
 
   try {
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { id: session.user.id },
       include: {
         violations: {
           orderBy: { createdAt: "desc" },
+          select: { id: true, points: true, reason: true, severity: true, status: true, date: true },
         },
       },
     });
@@ -40,13 +42,12 @@ export default async function MembershipPage() {
       memberId: user.memberId,
       coins: user.coins,
       attendanceCount: user.attendanceCount,
-      violationPoints: user.violationPoints || 0,
+      violationPoints: countViolationPoints(user.violations),
       violations: user.violations.map((v) => ({
         id: v.id,
         points: v.points,
         reason: v.reason,
         severity: v.severity,
-        followUp: v.followUp,
         status: v.status,
         date: v.date.toISOString(),
       })),

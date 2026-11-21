@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError, readJson } from "@/lib/apiErrors";
 import { prisma } from "@/lib/prisma";
+import { withViolationPoints } from "@/lib/violationTotals";
 import { authorizeAdminApi } from "@/lib/adminAuth";
 import bcrypt from "bcryptjs";
 import * as z from "zod";
@@ -28,12 +29,11 @@ export async function GET() {
         parish: true,
         rank: true,
         coins: true,
-        violationPoints: true,
         createdAt: true,
       },
     });
 
-    return NextResponse.json({ users }, { status: 200 });
+    return NextResponse.json({ users: await withViolationPoints(prisma, users) }, { status: 200 });
   } catch (error) {
     const issue = memberMutationError(error);
     if (issue) return apiError(issue.status, issue.message);
@@ -138,12 +138,11 @@ export async function POST(req: NextRequest) {
           parish: true,
           rank: true,
           coins: true,
-          violationPoints: true,
           createdAt: true,
         },
       });
 
-      return NextResponse.json({ success: true, user: newUser }, { status: 201 });
+      return NextResponse.json({ success: true, user: { ...newUser, violationPoints: 0 } }, { status: 201 });
     }
 
     // Default: Toggle approval / quick memberId update
