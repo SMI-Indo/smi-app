@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RegistrationForm } from "./RegistrationForm";
 import { Countdown } from "./Countdown";
-import { fieldsSchema, registrationClosesAt, registrationWindowOpen, remainingSlots } from "@/lib/registrationFields";
+import { fieldsSchema, registrationAvailability, registrationClosesAt, registrationStatusLabel, remainingSlots } from "@/lib/registrationFields";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,8 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
   const remaining = event ? remainingSlots(event.capacity, event._count.registrations) : null;
   const terms = splitRegistrationTerms(event?.registrationTerms ?? "");
   const fields = fieldsSchema.safeParse(event?.registrationFields);
-  const open = event && registrationWindowOpen(event.status, event.registrationDeadline, now) && remaining !== 0;
+  const availability = event && registrationAvailability(event.status, event.registrationDeadline, event.capacity, event._count.registrations, now);
+  const open = availability === "open";
   let accountEmail: string | null | undefined;
   let identityUnavailable = false;
   if (open) {
@@ -104,13 +105,13 @@ export default async function RegistrationPage({ params }: { params: Promise<{ s
               <h2 className="text-xl font-semibold">Formulir gagal dimuat</h2>
               <p className="mt-2 text-sm text-on-surface-variant">Muat ulang halaman atau hubungi pengurus.</p>
             </section>
-          ) : open && fields.success ? (
+          ) : event && open && fields.success ? (
             <RegistrationForm slug={slug} categories={event.registrationCategories} fields={fields.data} accountEmail={accountEmail} />
           ) : (
             <section>
-              <h2 className="text-xl font-semibold">{event && remaining === 0 ? "Kuota penuh" : !event ? "Kegiatan tidak ditemukan" : event.registrationDeadline && registrationClosesAt(event.registrationDeadline) <= now ? "Pendaftaran sudah ditutup" : "Pendaftaran belum tersedia"}</h2>
+              <h2 className="text-xl font-semibold">{availability ? registrationStatusLabel[availability] : "Kegiatan tidak ditemukan"}</h2>
               <p className="mt-2 text-sm text-on-surface-variant">
-                {event && remaining === 0 ? "Semua tempat untuk kegiatan ini sudah terisi." : "Periksa daftar acara untuk melihat pendaftaran yang masih dibuka."}
+                {availability === "full" ? "Semua tempat untuk kegiatan ini sudah terisi." : "Periksa daftar acara untuk melihat pendaftaran yang masih dibuka."}
               </p>
             </section>
           )}

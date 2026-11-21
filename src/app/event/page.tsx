@@ -1,18 +1,19 @@
 import { prisma } from "@/lib/prisma";
 import { EventScheduler } from "@/components/event/EventScheduler";
-import { Event as PrismaEvent } from "@prisma/client";
+import type { Event as PrismaEvent } from "@prisma/client";
 import { registrationOrigin } from "@/lib/registrationLinks";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventPage() {
-  let events: PrismaEvent[] = [];
+  let events: (PrismaEvent & { _count: { registrations: number } })[] = [];
   let unavailable = false;
   try {
     events = await prisma.event.findMany({
       where: {
         category: { in: ["WEBINAR", "TEMU_ONLINE", "WORKSHOP", "ACARA"] },
       },
+      include: { _count: { select: { registrations: true } } },
       orderBy: { date: "asc" },
     });
   } catch {

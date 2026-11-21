@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseWibDeadline, readAnswers, registrationWindowOpen, remainingSlots, type RegistrationField } from "./registrationFields";
+import { parseWibDeadline, readAnswers, registrationAvailability, registrationWindowOpen, remainingSlots, type RegistrationField } from "./registrationFields";
 
 describe("registration settings", () => {
   it("accepts the entire configured WIB minute across time zones", () => {
@@ -18,6 +18,12 @@ describe("registration settings", () => {
     expect(remainingSlots(null, 500)).toBeNull();
     expect(remainingSlots(5, 3)).toBe(2);
     expect(remainingSlots(5, 7)).toBe(0);
+  });
+
+  it("distinguishes unconfigured registrations from an event that has been closed", () => {
+    const now = new Date("2026-11-21T10:00:00+07:00");
+    expect(registrationAvailability("UPCOMING", null, null, 0, now)).toBe("unavailable");
+    expect(registrationAvailability("COMPLETED", new Date("2026-11-22T10:00:00+07:00"), null, 0, now)).toBe("closed");
   });
 
   it("validates required URLs and persists only configured answers with their labels", () => {

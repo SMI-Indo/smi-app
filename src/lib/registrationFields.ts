@@ -86,3 +86,18 @@ export function registrationDeadlineFitsEvent(deadline: Date, eventDate: Date) {
 export function registrationWindowOpen(status: string, deadline: Date | null, now = new Date()) {
   return status === "UPCOMING" && deadline !== null && registrationClosesAt(deadline) > now;
 }
+
+export function registrationAvailability(
+  status: string, deadline: Date | null, capacity: number | null, registered: number, now = new Date(),
+) {
+  if (status === "UPCOMING" && deadline === null) return "unavailable";
+  if (!registrationWindowOpen(status, deadline, now)) return "closed";
+  return remainingSlots(capacity, registered) === 0 ? "full" : "open";
+}
+
+export const registrationStatusLabel = {
+  open: "Pendaftaran dibuka",
+  full: "Kuota penuh",
+  closed: "Pendaftaran ditutup",
+  unavailable: "Pendaftaran belum tersedia",
+};

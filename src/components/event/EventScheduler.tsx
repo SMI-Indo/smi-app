@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
 import { registrationHref } from "@/lib/registrationLinks";
-import { registrationWindowOpen } from "@/lib/registrationFields";
+import { registrationAvailability, registrationStatusLabel } from "@/lib/registrationFields";
 
 import { useState } from "react";
+import { useServerClock } from "./useServerClock";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import { Event } from "@prisma/client";
+import type { Event } from "@prisma/client";
 
 const subscribeFormSchema = z.object({
   contact: z.string().refine((val) => {
@@ -22,10 +23,14 @@ const subscribeFormSchema = z.object({
 
 type SubscribeValues = z.infer<typeof subscribeFormSchema>;
 
-export function EventScheduler({ initialEvents, registrationBase, serverNow = 0 }: { initialEvents: Event[]; registrationBase?: string; serverNow?: number }) {
+type ScheduleEvent = Event & { _count: { registrations: number } };
+
+export function EventScheduler({ initialEvents, registrationBase, serverNow }: { initialEvents: ScheduleEvent[]; registrationBase?: string; serverNow: number }) {
   const [selectedTab, setSelectedTab] = useState<"ALL" | "WEBINAR" | "TEMU_ONLINE" | "WORKSHOP" | "ACARA">("ALL");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ success: boolean; text: string } | null>(null);
+  const hasRegistration = initialEvents.some((event) => event.registrationSlug && event.registrationDeadline);
+  const now = new Date(useServerClock(serverNow, hasRegistration));
 
   const {
     register,
@@ -92,6 +97,9 @@ export function EventScheduler({ initialEvents, registrationBase, serverNow = 0 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredEvents.map((evt) => {
           const isCompleted = evt.status === "COMPLETED";
+          const availability = registrationAvailability(
+            evt.status, evt.registrationDeadline && new Date(evt.registrationDeadline), evt.capacity, evt._count.registrations, now,
+          );
           const categoryLabel =
             evt.category === "WEBINAR"
               ? "Webinar Daring"
@@ -136,10 +144,13 @@ export function EventScheduler({ initialEvents, registrationBase, serverNow = 0 
                   <span className="truncate max-w-[160px]">{evt.location}</span>
                 </div>
               </div>
-              {evt.registrationSlug && registrationWindowOpen(evt.status, evt.registrationDeadline && new Date(evt.registrationDeadline), new Date(serverNow)) && (
-                <Link className="inline-flex min-h-11 items-center self-start font-semibold text-primary underline"
-                  href={registrationHref(evt.registrationSlug, registrationBase)}>Lihat pendaftaran</Link>
-              )}
+              {evt.registrationSlug && <div className="flex flex-wrap items-center justify-between gap-x-4">
+                <p className="text-sm text-on-surface-variant">{registrationStatusLabel[availability]}</p>
+                <Link className="inline-flex min-h-11 items-center font-semibold text-primary underline"
+                  href={registrationHref(evt.registrationSlug, registrationBase)}>
+                  {availability === "open" ? "Daftar" : "Lihat detail pendaftaran"}
+                </Link>
+              </div>}
             </div>
           );
         })}
