@@ -1,173 +1,32 @@
-# 📋 Panduan Setup Environment Variables — SMI App
+# Setup SMI
 
-Sebelum menjalankan aplikasi, Anda perlu menyiapkan file `.env.local` dengan semua nilai yang dibutuhkan.
+## Environment lokal
 
----
+Salin .env.example ke .env.local. Isi DATABASE_URL dengan koneksi runtime PostgreSQL dan DIRECT_URL dengan koneksi langsung atau session pooler untuk Prisma CLI. Prisma CLI membaca .env.local lalu .env dan memilih DIRECT_URL jika tersedia. Runtime memilih DATABASE_URL.
 
-## Langkah Pertama
+Gunakan NEXTAUTH_URL=http://localhost:3000 untuk pengembangan lokal. Buat NEXTAUTH_SECRET dengan generator kriptografis, misalnya node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))". Simpan nilai environment dan kredensial di luar Git.
 
-Salin template file `.env.example` menjadi `.env.local`:
+## Skema PostgreSQL
 
-```bash
-copy .env.example .env.local
-```
+- **Database lokal baru.** Pastikan DATABASE_URL dan DIRECT_URL menunjuk ke database lokal yang sama. Jalankan pnpm exec prisma db push lalu pnpm exec prisma generate. Instalasi dependensi juga menjalankan prisma generate lewat postinstall.
+- **Database dengan skema yang sudah ada.** Bandingkan tabel dan kolom aktual dengan prisma/schema.prisma. Uji skrip aditif yang diperlukan pada salinan dev dengan skema awal yang setara. Skrip dasar di prisma/sql/ adalah 20261112_liturgical_guide.sql, 20261112_registrations_violations_merchandise.sql, dan 20261114_registration_fields.sql, berurutan. Terapkan skrip berikutnya sesuai fitur dan skema lingkungan.
+- **Data contoh.** pnpm exec prisma db seed mengganti beberapa dataset contoh. Jalankan hanya pada database dev/lokal yang boleh kehilangan data tersebut.
 
-Kemudian isi setiap nilai sesuai panduan di bawah ini.
+## Integrasi dan rilis
 
----
+- main untuk preview dan master untuk production. Periksa database dan konfigurasi setiap lingkungan secara terpisah. Promosikan fitur setelah verifikasi di preview.
+- Isi RESEND_API_KEY dan EMAIL_FROM (alamat pengirim terverifikasi) untuk email. Tanpa konfigurasi ini transaksi tetap tersimpan.
+- Login Google tetap nonaktif di antarmuka. Kuis Liturgi default nonaktif dan dikendalikan oleh ENABLE_LITURGY_QUIZ.
+- PREVIEW_BETA_NAVBAR default nonaktif dan hanya berpengaruh di lingkungan Vercel preview.
+- REGISTRATION_HOST opsional. Isi dengan hostname daftar.<domain> tanpa protokol atau path setelah DNS dan proyek Vercel dikonfigurasi. URL /daftar/<slug> dan /daftar-<slug> tetap tersedia. REGISTRATION_VIEW_SECRET opsional untuk kode daftar peserta dan memakai NEXTAUTH_SECRET sebagai fallback.
 
-## 1. 🗄️ DATABASE_URL & DIRECT_URL (Supabase PostgreSQL)
+## Bukti pelanggaran privat
 
-**Layanan:** [Supabase](https://supabase.com) — Gratis tier tersedia (500MB database)
+Fitur default nonaktif. Uji menggunakan database dan Storage preview sebelum menyetel ENABLE_VIOLATION_EVIDENCE=true.
 
-**Langkah Setup:**
-1. Daftar/masuk di [supabase.com](https://supabase.com)
-2. Klik **New Project**, beri nama proyek (contoh: `smi-app`)
-3. Pilih region: **Southeast Asia (Singapore)** untuk performa terbaik
-4. Buat password database yang kuat — **catat di tempat aman**, tidak bisa dilihat lagi!
-5. Tunggu proyek selesai dibuat (~2 menit)
-6. Pergi ke **Settings → Database → Connection string**
-7. Salin nilai **URI (Transaction mode)** → isikan ke `DATABASE_URL`
-8. Salin nilai **URI (Session mode / Direct)** → isikan ke `DIRECT_URL`
+1. Periksa skema preview dan terapkan prisma/sql/20261114_private_violation_evidence.sql jika diperlukan. Periksa bahwa bucket violation-evidence bersifat privat.
+2. Isi SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY di server. Simpan service role key tanpa prefix NEXT_PUBLIC_.
+3. Generate ulang Prisma Client. Uji unggah PNG/JPEG/WebP dan pembacaan bukti dengan sesi admin, serta penolakan akses anggota dan tamu. Batasnya tiga gambar, masing-masing 1 MiB setelah kompresi.
+4. Unggahan dijurnal sebelum request Storage. Kegagalan unggah mempunyai masa tunggu satu jam sebelum pembersihan. POST /api/admin/evidence-cleanup memproses maksimal 100 entri jatuh tempo per pemanggilan dengan sesi admin. Penjadwalan otomatis belum dikonfigurasi. Pertahankan antrean dan akses pembersihan saat unggahan dimatikan.
 
-> **Catatan:** `DATABASE_URL` menggunakan connection pooler (port 6543), `DIRECT_URL` menggunakan koneksi langsung (port 5432). Prisma Migrate membutuhkan `DIRECT_URL`.
-
----
-
-## 2. 🔐 NEXTAUTH_SECRET
-
-Generate secret key secara acak menggunakan salah satu cara berikut:
-
-**Cara 1 — via terminal (PowerShell):**
-```powershell
-[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
-```
-
-**Cara 2 — via website:**
-Kunjungi [https://generate-secret.vercel.app](https://generate-secret.vercel.app) dan salin hasilnya.
-
-Isi `NEXTAUTH_SECRET` dengan nilai yang dihasilkan.
-`NEXTAUTH_URL` = `http://localhost:3000` (untuk development lokal).
-
----
-
-## 3. 🔵 GOOGLE_CLIENT_ID & GOOGLE_CLIENT_SECRET
-
-**Layanan:** [Google Cloud Console](https://console.cloud.google.com)
-
-**Langkah Setup:**
-1. Buka [console.cloud.google.com](https://console.cloud.google.com)
-2. Buat project b aru atau pilih project yang sudah ada
-3. Pergi ke **APIs & Services → OAuth consent screen**
-   - User type: **External**
-   - Isi nama aplikasi: `Sahabat Misdinar Indonesia`
-   - Isi email dukungan dan developer
-   - Simpan dan lanjutkan
-4. Pergi ke **APIs & Services → Credentials**
-5. Klik **+ Create Credentials → OAuth 2.0 Client IDs**
-   - Application type: **Web application**
-   - Nama: `SMI App (localhost)`
-   - Authorized redirect URIs: `http://localhost:3000/api/auth/callback/google`
-6. Klik **Create** — salin **Client ID** dan **Client Secret**
-
----
-
-## 4. 🖼️ CLOUDINARY (Penyimpanan Gambar & Media)
-
-**Layanan:** [Cloudinary](https://cloudinary.com) — Gratis 25GB storage & 25GB bandwidth/bulan
-
-**Digunakan untuk:** Avatar anggota, Kartu Anggota PNG, Thumbnail video
-
-**Langkah Setup:**
-1. Daftar di [cloudinary.com](https://cloudinary.com)
-2. Setelah masuk, buka **Dashboard**
-3. Di bagian **Account Details**, salin:
-   - **Cloud Name** → isikan ke `CLOUDINARY_CLOUD_NAME` & `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
-   - **API Key** → isikan ke `CLOUDINARY_API_KEY`
-   - **API Secret** → isikan ke `CLOUDINARY_API_SECRET`
-
----
-
-## ✅ Setelah Semua Nilai Terisi
-
-### 1. Tambahkan `.env.local` ke `.gitignore`
-Pastikan file `.gitignore` sudah berisi baris berikut (seharusnya sudah ada):
-```
-.env.local
-```
-
-### 2. Jalankan Prisma Migration
-```bash
-npx prisma migrate dev --name init
-```
-
-### 3. Generate Prisma Client
-```bash
-npx prisma generate
-```
-
-### 4. Jalankan Development Server
-```bash
-pnpm dev
-```
-
-Aplikasi akan berjalan di [http://localhost:3000](http://localhost:3000)
-
----
-
-## 🚀 Setelah Selesai Setup
-
-Beritahu developer bahwa file `.env.local` sudah siap diisi agar pengembangan komponen UI dan logika backend dapat dilanjutkan ke tahap berikutnya.
-
----
-
-> ⚠️ **PENTING:** Jangan pernah commit file `.env.local` ke Git repository. File ini berisi kredensial rahasia yang harus dijaga kerahasiaannya.
-
-## Pendaftaran acara, panduan, pelanggaran, dan merchandise
-
-Untuk database yang masih menggunakan skema lama, periksa tabel dan kolom yang
-sudah ada. Terapkan skrip yang masih diperlukan dengan urutan berikut sebelum
-menjalankan kode baru di `master`.
-
-1. `prisma/sql/20261112_liturgical_guide.sql`
-2. `prisma/sql/20261112_registrations_violations_merchandise.sql`
-3. `prisma/sql/20261114_registration_fields.sql`
-
-Uji urutan ini pada database uji dengan skema awal yang sama. Skrip hanya
-mengubah struktur dan tidak menyalin data preview. Setelah penerbitan,
-buat atau konfigurasikan pendaftaran pada kegiatan produksi lewat portal admin.
-
-Untuk database lokal baru, jalankan
-`npx prisma db push` dengan URL database lokal dan `npx prisma generate`.
-
-Pengurus dapat menerbitkan panduan, menambahkan varian merchandise, dan membuka
-pendaftaran dari menu masing-masing di portal pengurus. Agar
-`/daftar-lombanatal` menerima pendaftaran, buat jadwal Lomba Natal dan isi slug
-`lombanatal`, tenggat WIB, kuota, syarat, serta kategori pada Pengaturan Pendaftaran.
-
-Isi `RESEND_API_KEY` dan `EMAIL_FROM` (alamat pengirim yang diverifikasi di Resend)
-untuk mengirim email. Jika keduanya belum diisi, transaksi tetap tersimpan dan
-server mencatat jenis notifikasi yang dilewati tanpa mencatat data penerima.
-Kuis Liturgi tersembunyi secara default. Untuk menampilkannya kembali, atur
-`ENABLE_LITURGY_QUIZ=true` pada environment yang diinginkan dan redeploy.
-Untuk alamat pendaftaran `https://daftar.<domain>/<slug>`, tambahkan subdomain
-ke proyek Vercel, pasang DNS sesuai instruksi Vercel, lalu isi
-`REGISTRATION_HOST=daftar.<domain>` (tanpa protokol atau path) dan redeploy.
-Alamat `/daftar/<slug>` dan `/daftar-<slug>` tetap berlaku.
-
-## Bukti pelanggaran privat (opsional, preview dahulu)
-
-Kode tersedia di `main`, tetapi fitur nonaktif secara default. Jangan aktifkan
-sebelum migrasi dan uji integrasi preview berhasil.
-
-1. Gunakan proyek preview `rjvjlwjpoqyxvlbzaozn`; jangan menjalankan migrasi pada production untuk pengujian.
-2. Jalankan `prisma/sql/20261114_private_violation_evidence.sql` setelah memeriksa skema preview. Pastikan bucket `violation-evidence` privat; skrip tidak mengubah bucket yang sudah ada.
-3. Isi `SUPABASE_URL` dan `SUPABASE_SERVICE_ROLE_KEY` sebagai variabel server secara aman. Jangan beri prefix `NEXT_PUBLIC_` pada service-role key.
-4. Generate ulang Prisma Client. Uji membuat catatan, mengunggah PNG/JPEG/WebP, membuka bukti sebagai admin, serta penolakan akses anggota/tamu.
-5. Set `ENABLE_VIOLATION_EVIDENCE=true` hanya setelah langkah tersebut berhasil. Maksimal tiga gambar, masing-masing 1 MiB setelah kompresi browser, menjaga payload di bawah batas request fungsi Vercel.
-6. Unggahan dijurnal sebelum request Storage. Unggahan gagal memiliki masa tunggu satu jam sebelum pembersihan agar tidak menghapus operasi yang masih berjalan. Penghapusan catatan menjadwalkan pembersihan dalam transaksi yang sama. Endpoint admin `POST /api/admin/evidence-cleanup` memproses maksimal 100 entri yang jatuh tempo; jalankan berkala melalui sesi admin sampai tidak ada antrean. Kegagalan tetap tersimpan untuk dicoba kembali. Penjadwalan otomatis belum dikonfigurasi.
-7. Bila unggah dinonaktifkan, pembersihan tetap harus bisa dijalankan. Jangan menghapus tabel antrean sebelum bukti tidak terpakai telah dibersihkan. Akun dengan riwayat pelanggaran tidak dihapus secara berantai; nonaktifkan persetujuan untuk mempertahankan riwayat.
-
-Saat perubahan keamanan akun dirilis, sesi JWT lama perlu login ulang satu kali.
-Reset/ganti password membatalkan sesi yang memiliki fingerprint password lama;
-password dan fingerprint tidak dikirim dalam objek sesi publik.
+Reset atau ganti kata sandi mengakhiri sesi berbasis kredensial lama. Sesi JWT dari sebelum perubahan keamanan dapat meminta login ulang.
