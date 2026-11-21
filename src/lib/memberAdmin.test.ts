@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { updateMemberSafely, deleteMemberSafely } from "./memberAdmin";
-const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), count: vi.fn(), update: vi.fn(), delete: vi.fn() }, violationRecord: { count: vi.fn() }, $transaction: vi.fn() }));
+const db = vi.hoisted(() => ({ user: { findUnique: vi.fn(), count: vi.fn(), update: vi.fn(), delete: vi.fn() }, violationRecord: { count: vi.fn(), groupBy: vi.fn() }, $transaction: vi.fn() }));
 vi.mock("./prisma", () => ({ prisma: db }));
 beforeEach(() => {
   vi.resetAllMocks();
@@ -8,6 +8,7 @@ beforeEach(() => {
   db.user.findUnique.mockResolvedValue({ role: "MEMBER", isApproved: false, memberId: null });
   db.user.count.mockResolvedValue(2);
   db.violationRecord.count.mockResolvedValue(0);
+  db.violationRecord.groupBy.mockResolvedValue([]);
   db.user.update.mockResolvedValue({ id: "member" });
 });
 it("rejects approval without a member ID", async () => {
@@ -19,7 +20,7 @@ it("rejects removing an approved member's ID", async () => {
   await expect(updateMemberSafely("member", { memberId: null })).rejects.toThrow("Nomor anggota");
 });
 it("allows approval and member ID in one update", async () => {
-  await expect(updateMemberSafely("member", { isApproved: true, memberId: "SMI-1" })).resolves.toEqual({ id: "member" });
+  await expect(updateMemberSafely("member", { isApproved: true, memberId: "SMI-1" })).resolves.toEqual({ id: "member", violationPoints: 0 });
   expect(db.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: "Serializable" });
 });
 it("blocks demoting the final admin", async () => {

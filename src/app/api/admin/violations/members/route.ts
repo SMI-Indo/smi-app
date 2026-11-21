@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { checkAdminSession } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { withViolationPoints } from "@/lib/violationTotals";
 
 type Member = {
   id: string;
@@ -9,7 +10,6 @@ type Member = {
   memberId: string | null;
   parish: string | null;
   phone: string | null;
-  violationPoints: number;
 };
 
 export async function GET(request: Request) {
@@ -26,11 +26,12 @@ export async function GET(request: Request) {
         OR strpos(lower("email"), lower(${q})) > 0
         OR strpos(lower(coalesce("memberId", '')), lower(${q})) > 0`;
     const members = await prisma.$queryRaw<Member[]>`
-      SELECT "id", "name", "email", "memberId", "parish", "phone", "violationPoints"
+      SELECT "id", "name", "email", "memberId", "parish", "phone"
       FROM "User" WHERE "role" = 'MEMBER' AND (${matches})
       ORDER BY "name" ASC NULLS LAST, "id" ASC LIMIT 20
     `;
-    return Response.json({ members: members.map(({ phone, ...member }) => ({
+    const scoredMembers = await withViolationPoints(prisma, members);
+    return Response.json({ members: scoredMembers.map(({ phone, ...member }) => ({
       ...member, phoneSuffix: phone?.replace(/\D/g, "").slice(-4) || null,
     })) }, { headers });
   } catch {

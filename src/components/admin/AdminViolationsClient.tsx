@@ -16,7 +16,7 @@ type RecordItem = {
   cancelledAt?: string | null; cancelledById?: string | null; user: Member;
   evidence?: { id: string; fileName: string }[];
 };
-type History = { violations: RecordItem[]; page: number; totalPages: number; total: number };
+type History = { violations: RecordItem[]; page: number; totalPages: number; total: number; memberPoints?: number };
 const field = "min-h-11 w-full min-w-0 rounded-md border border-outline bg-surface px-3 py-2";
 const button = "inline-flex min-h-11 items-center justify-center rounded-md border border-outline px-3 py-2 text-sm font-semibold disabled:opacity-50";
 const dateFormat = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
@@ -32,6 +32,7 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
   const [preparing, setPreparing] = useState(false);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [searchRevision, setSearchRevision] = useState(0);
   const [members, setMembers] = useState<Member[]>([]);
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
@@ -54,7 +55,7 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
       .catch((error: Error) => { if (!abort.signal.aborted) setSearchError(error.message); })
       .finally(() => { if (!abort.signal.aborted) setSearching(false); });
     return () => abort.abort();
-  }, [search]);
+  }, [search, searchRevision]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -116,8 +117,8 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
           setSearchError("");
           setMembers([]);
           setSearching(true);
-          setSearch(value === search ? "" : value);
-          if (value === search) setTimeout(() => setSearch(value), 0);
+          setSearch(value);
+          setSearchRevision((current) => current + 1);
         }}>
           <label htmlFor="member-query" className="block font-semibold">Cari anggota</label>
           <div className="flex flex-wrap gap-2">
@@ -133,9 +134,13 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
         </p>}
         {!searching && members.length > 0 && <ul className="divide-y divide-outline-variant rounded-md border border-outline-variant">
           {members.map((member) => <li key={member.id}>
-            <button type="button" disabled={busy} aria-pressed={selected?.id === member.id}
+            <button type="button" disabled={busy || preparing} aria-pressed={selected?.id === member.id}
               className="block min-h-11 w-full break-words px-3 py-2 text-left hover:bg-surface-container aria-pressed:bg-surface-container"
-              onClick={() => setSelected(member)}>
+              onClick={() => {
+                if (selected?.id === member.id) return;
+                setFiles([]);
+                setSelected(member);
+              }}>
               <strong>{member.name || member.email}</strong>
               <span className="block text-sm text-on-surface-variant">
                 {[member.memberId ?? "Tanpa ID", member.parish, member.phoneSuffix && "HP •••• " + member.phoneSuffix].filter(Boolean).join(" · ")}
@@ -143,7 +148,7 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
             </button>
           </li>)}
         </ul>}
-        {selected && <form className="grid gap-4 border-t border-outline-variant pt-4 sm:grid-cols-2" onSubmit={async (event) => {
+        {selected && <form key={selected.id} className="grid gap-4 border-t border-outline-variant pt-4 sm:grid-cols-2" onSubmit={async (event) => {
           event.preventDefault();
           const form = event.currentTarget;
           const values = Object.fromEntries(new FormData(form));
@@ -172,7 +177,9 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
           event.preventDefault();
           const data = new FormData(event.currentTarget);
           const values = new URLSearchParams();
-          for (const key of ["status", "from", "to"]) {
+          const filteredMember = new URLSearchParams(filters).get("memberId");
+          if (filteredMember) values.set("memberId", filteredMember);
+          for (const key of ["status", "severity", "from", "to"]) {
             const value = String(data.get(key) || "");
             if (value) values.set(key, value);
           }
@@ -182,6 +189,9 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
         }}>
           <label>Status<select name="status" className={field}><option value="">Semua status</option>
             {Object.entries(violationStatus).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+          <label>Tingkat<select name="severity" className={field}><option value="">Semua tingkat</option>
+            {Object.entries(severityLabels).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
           </select></label>
           <label>Dari tanggal<input name="from" type="date" className={field} /></label>
           <label>Sampai tanggal<input name="to" type="date" className={field} /></label>
@@ -199,6 +209,8 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
           next.delete("memberId");
           setFilters(next.toString()); setPage(1); refresh();
         }}>Tampilkan semua anggota</button>}
+        {!loading && !historyError && history?.memberPoints !== undefined &&
+          <p className="font-semibold">Total poin anggota: {history.memberPoints}</p>}
         {loading ? <p role="status">Memuat riwayat…</p> : historyError ? <p role="alert">{historyError} <button className={button} onClick={refresh}>Coba lagi</button></p>
           : history?.violations.length === 0 ? <p>{filters ? "Tidak ada catatan yang sesuai dengan filter." : "Belum ada catatan pelanggaran."}</p>
           : history && <>
@@ -209,7 +221,7 @@ export function AdminViolationsClient({ evidenceEnabled = false }: { evidenceEna
                   <h3 className="font-semibold">{item.user.name || item.user.email}</h3>
                   <span className="text-sm">{dateFormat.format(new Date(item.date))}</span>
                 </div>
-                <p className="text-sm">{item.user.memberId ?? "Tanpa ID"} · {item.points} poin · {severityLabels[item.severity]?.label ?? item.severity}</p>
+                <p className="text-sm">{item.user.memberId ?? "Tanpa ID"} · {item.points} poin{item.status === "CANCELLED" ? " (tidak dihitung)" : ""} · {severityLabels[item.severity]?.label ?? item.severity}</p>
                 <p className="text-sm font-semibold">{violationStatus[item.status] ?? item.status}</p>
                 <p className="whitespace-pre-wrap">{item.reason}</p>
                 {item.followUp && <p className="whitespace-pre-wrap text-sm">Tindak lanjut: {item.followUp}</p>}

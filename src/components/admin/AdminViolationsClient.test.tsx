@@ -48,3 +48,15 @@ it("loads the second page from the API totalPages contract", async () => {
   await waitFor(() => expect(screen.getByText("Halaman 2 dari 2")).toBeInTheDocument());
   expect(screen.getByRole("button", { name: "Berikutnya" })).toBeDisabled();
 });
+
+it("clears draft violation details when another member is selected", async () => {
+  const otherMember = { ...member, id: "member-2", name: "Yohanes", memberId: "SMI-2" };
+  fetchRequest.mockImplementation(async (url: string) => url.includes("/members?")
+    ? Response.json({ members: [member, otherMember] })
+    : Response.json({ violations: [], page: 1, totalPages: 1, total: 0 }));
+  render(<AdminViolationsClient />);
+  await selectMember();
+  fireEvent.change(screen.getByLabelText("Alasan"), { target: { value: "Catatan Maria" } });
+  fireEvent.click(screen.getByRole("button", { name: /Yohanes/ }));
+  expect(screen.getByLabelText("Alasan")).toHaveValue("");
+});

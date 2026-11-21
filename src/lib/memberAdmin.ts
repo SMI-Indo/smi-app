@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { hasMemberId } from "./memberAccess";
+import { violationPointsByMember } from "./violationTotals";
 
 export class MemberPolicyError extends Error {
   constructor(message: string, readonly status = 400) {
@@ -14,7 +15,7 @@ export type MemberPatch = Partial<{
 const memberSelection = {
   id: true, name: true, nickname: true, email: true, phone: true, role: true,
   isApproved: true, memberId: true, parish: true, rank: true, coins: true,
-  violationPoints: true, createdAt: true, updatedAt: true,
+  createdAt: true, updatedAt: true,
 } as const;
 
 export function validateMemberApproval(role: string, approved: boolean, memberId: string | null | undefined) {
@@ -32,7 +33,9 @@ export async function updateMemberSafely(id: string, data: MemberPatch) {
     }
     validateMemberApproval(data.role ?? current.role, data.isApproved ?? current.isApproved,
       data.memberId === undefined ? current.memberId : data.memberId);
-    return tx.user.update({ where: { id }, data, select: memberSelection });
+    const member = await tx.user.update({ where: { id }, data, select: memberSelection });
+    const totals = await violationPointsByMember(tx, [id]);
+    return { ...member, violationPoints: totals.get(id) ?? 0 };
   }, { isolationLevel: "Serializable" });
 }
 

@@ -1,3 +1,10 @@
+export const cancelledViolationStatus = "CANCELLED";
+export const violationSeverities = ["RINGAN", "SEDANG", "BERAT"] as const;
+
+export function countViolationPoints(records: readonly { status: string; points: number }[]) {
+  return records.reduce((total, record) => record.status === cancelledViolationStatus ? total : total + record.points, 0);
+}
+
 export const violationStatus: Record<string, string> = {
   OPEN: "Perlu perhatian", IN_PROGRESS: "Sedang ditindaklanjuti", RESOLVED: "Selesai", CANCELLED: "Dibatalkan",
 };
